@@ -24,3 +24,64 @@ preferences {
         input("refreshInterval", "enum", title: "Refresh Interval in minutes", defaultValue: "10", required:true, displayDuringSetup:true, options: ["1","5","10","15","30"])
     }
  }
+
+// Generic Private Functions Not sure what im doing here -------
+private getHostAddress() {
+    def ip = settings.ipAddress
+    def port = settings.ipPort
+    return ip + ":" + port
+}
+
+private getDNI(String ipAddress, String port){
+    log.debug "Generating DNI"
+    String ipHex = ipAddress.tokenize( '.' ).collect {  String.format( '%02X', it.toInteger() ) }.join()
+    String portHex = String.format( '%04X', port.toInteger() )
+    String newDNI = ipHex + ":" + portHex
+    return newDNI
+}
+
+private apiGet(def apiCommand) {
+    log.debug "Executing hubaction on " + getHostAddress() + apiCommand
+    sendEvent(name: "hubactionMode", value: "local")
+
+    def hubAction = new hubitat.device.HubAction(
+        method: "GET",
+        path: apiCommand,
+        headers: [Host:getHostAddress()]
+    )
+
+    return hubAction
+}
+
+private sendJsonCommand(json) {
+  def headers = [:]
+  headers.put("HOST", "${getHostAddress}")
+  headers.put("Content-Type", "application/json")
+
+  def result = new hubitat.device.HubAction(
+    method: 'POST',
+    path: '/sony/system',
+    body: json,
+    headers: headers
+  )
+  result
+}
+
+// Basic button commands
+
+def refresh() {
+    def json = "{\"method\":\"getPowerStatus\",\"version\":\"1.1\",\"params\":[],\"id\":102}"
+  	def result = sendJsonCommand(json)
+}
+
+def on() {
+
+      def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":active}],\"id\":102}"
+  	  def result = sendJsonCommand(json)
+}
+
+def off() {
+
+      def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":standby}],\"id\":102}"
+  	  def result = sendJsonCommand(json)
+}
