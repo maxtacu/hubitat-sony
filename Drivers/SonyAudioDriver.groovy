@@ -19,6 +19,7 @@
     capability "Refresh"
     capability "Polling"
     command "UpdateAll"
+    command "setSubLevel", ["number"]
     }
 
 preferences {
@@ -203,5 +204,12 @@ def setPowerStatusOn() {
 def setPowerStatusOff() {
     def lib = '/sony/system'
     def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"off\"}],\"id\":102}"
+    def result = sendJsonRpcCommand(json)
+}
+
+def setSubLevel() {
+    def lib = '/sony/audio'
+    def json = "{\"method\":\"setSoundSettings\",\"version\":\"1.1\",\"params\":[{\"value\":\"5\"}],\"id\":56}"
+    //{"method":"setSoundSettings","id":5,"params":[{"settings":[{"value":"5","target":"subwooferLevel"}]}],"version":"1.1"}
     def result = sendJsonRpcCommand(json)
 }
