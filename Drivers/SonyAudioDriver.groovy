@@ -109,7 +109,7 @@ def parse(description) {
   }
 }
 
-private sendJsonRpcCommand(json) {
+private sendJsonRpcCommand(json, lib) {
   def headers = [:]
   headers.put("HOST", "${state.device_ip}:${device_port}")
   headers.put("Content-Type", "application/json")
@@ -117,7 +117,7 @@ private sendJsonRpcCommand(json) {
 
   def result = new hubitat.device.HubAction(
     method: 'POST',
-    path: '/sony/system',
+    path: '${lib}',
     body: json,
     headers: headers
   )
@@ -190,26 +190,26 @@ def UpdateAll() {
 
 
 def getPowerStatus() {
-    def lib = '/sony/system'
+    def lib = "/sony/system"
     def json = "{\"id\":2,\"method\":\"getPowerStatus\",\"version\":\"1.1\",\"params\":[]}"
-    def result = sendJsonRpcCommand(json)
+    def result = sendJsonRpcCommand(json, lib)
 }
 
 def setPowerStatusOn() {
-    def lib = '/sony/system'
+    def lib = "/sony/system"
     def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"active\"}],\"id\":102}"
-    def result = sendJsonRpcCommand(json)    
+    def result = sendJsonRpcCommand(json, lib)    
 }
 
 def setPowerStatusOff() {
-    def lib = '/sony/system'
+    def lib = "/sony/system"
     def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"off\"}],\"id\":102}"
-    def result = sendJsonRpcCommand(json)
+    def result = sendJsonRpcCommand(json, lib)
 }
 
 def setSubLevel() {
-    def lib = '/sony/audio'
+    def lib = "/sony/audio"
     def json = "{\"method\":\"setSoundSettings\",\"version\":\"1.1\",\"params\":[{\"value\":\"5\"}],\"id\":56}"
     //{"method":"setSoundSettings","id":5,"params":[{"settings":[{"value":"5","target":"subwooferLevel"}]}],"version":"1.1"}
-    def result = sendJsonRpcCommand(json)
+    def result = sendJsonRpcCommand(json, lib)
 }
