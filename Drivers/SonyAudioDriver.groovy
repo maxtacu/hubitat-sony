@@ -101,7 +101,7 @@ def parse(description) {
     
   
   if (msg.json?.id == 2) {
-  	//Set the Global value of state.tv on or off
+  	//Set the Global value of state.device on or off
     state.device = (msg.json.result[0]?.status == "active") ? "on" : "off"
     sendEvent(name: "switch", value: state.device)
     if (logEnable) log.debug "Device is '${state.device}'"
