@@ -27,7 +27,6 @@ preferences {
 		    input name: "ip3", type: "number", range: "0..254", required: true, title: "Ip address 3", displayDuringSetup: true
 		    input name: "ip4", type: "number", range: "0..254", required: true, title: "Ip address 4", displayDuringSetup: true
         input name: "device_port", type: "number", range: "0..99999", defaultValue: "10000", required: true, title: "Device Port", displayDuringSetup: true
-        input("refreshInterval", "enum", title: "Refresh Interval in minutes", defaultValue: "10", required:false, displayDuringSetup:true, options: ["1","5","10","15","30"])
         input name: "device_psk", type: "text", title: "PSK Passphrase Set on your device", description: "Enter passphrase", required: false, displayDuringSetup: true
         input"logEnable", "bool", title: "Enable debug logging", defaultValue: true
     }
@@ -154,17 +153,14 @@ def on() {
   if (state.device == "polling"){
   	  WOLC()
         setPowerStatusOn()
-        //poll()
   } else {
         setPowerStatusOn()
-        //poll()
   }
 }
 
 def off() {
   if (logEnable) log.debug "Executing 'off'"
     setPowerStatusOff()
-    //poll()
 }
 
 def refresh() {
