@@ -207,7 +207,8 @@ def setPowerStatusOff() {
     def result = sendJsonRpcCommand(json, lib)
 }
 
-def setSubLevel() {
+def setSubLevel(Level) {
+  log.debug "Executing 'setSubLevel' with ${value}"
     def lib = "/sony/audio"
     def json = "{\"method\":\"setSoundSettings\",\"version\":\"1.1\",\"params\":[{\"value\":\"5\"}],\"id\":56}"
     //{"method":"setSoundSettings","id":5,"params":[{"settings":[{"value":"5","target":"subwooferLevel"}]}],"version":"1.1"}
