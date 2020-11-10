@@ -20,6 +20,8 @@
     capability "Polling"
     command "UpdateAll"
     command "setSubLevel", ["number"]
+    command "getSubLevel"
+    command "getSoundVolume"
     }
 
 preferences {
@@ -90,10 +92,10 @@ def iphex(){
 }
 
 def parse(description) {
-  //if (logEnable) log.debug ("Parsing '${description}'")
+  if (logEnable) log.debug ("Parsing description '${description}'")
   def msg = parseLanMessage(description)
 	//Set the Global Value of state.device_mac
-	//if (logEnable) log.debug "${msg}"
+	if (logEnable) log.debug "Message = '${msg}'"
     state.device_mac = msg.mac
     if (logEnable) log.debug ("MAC Address stored Globally as '${state.device_mac}'")
     //if (logEnable) log.debug "msg '${msg}'"
@@ -106,6 +108,20 @@ def parse(description) {
     sendEvent(name: "switch", value: state.device)
     if (logEnable) log.debug "Device is '${state.device}'"
     state.device_poll_count = 0
+  }
+
+  if (msg.json?.id == 78) {
+  	//Set the Global value of state.devicevolume
+    if (logEnable) log.debug "Result is ${msg.json.result}"
+    state.devicevolume = msg.json.result[0]?.volume
+    if (logEnable) log.debug "DeviceVolume is '${state.devicevolume}'"
+  }
+
+  if (msg.json?.id == 59) {
+  	//Set the Global value of state.sublevel
+    if (logEnable) log.debug "Result is ${msg.json.result}"
+    state.SubLevel = msg.json.result[0]?.currentValue
+    if (logEnable) log.debug "DeviceSublevel is '${state.SubLevel}'"
   }
 }
 
@@ -179,11 +195,13 @@ def poll() {
   }
   if (logEnable) log.debug "Executing 'poll'"
     getPowerStatus()
+    getSubLevel()
+    getSoundVolume()
 }
 
 def UpdateAll() {
     if (logEnable) log.debug("UpdateAllClicked.....")
-    sendEvent(name: "switch", value: "off")
+    //sendEvent(name: "switch", value: "off")
 }
 
 //API Commands
@@ -207,10 +225,23 @@ def setPowerStatusOff() {
     def result = sendJsonRpcCommand(json, lib)
 }
 
-def setSubLevel(Level) {
-  log.debug "Executing 'setSubLevel' with ${value}"
+def setSubLevel(def Level) {
+  log.debug "Executing 'setSubLevel' with ${Level}"
     def lib = "/sony/audio"
-    def json = "{\"method\":\"setSoundSettings\",\"version\":\"1.1\",\"params\":[{\"value\":\"5\"}],\"id\":56}"
-    //{"method":"setSoundSettings","id":5,"params":[{"settings":[{"value":"5","target":"subwooferLevel"}]}],"version":"1.1"}
+    def json = "{\"method\":\"setSoundSettings\",\"version\":\"1.1\",\"params\":[{\"settings\":[{\"value\":\"${Level}\",\"target\":\"subwooferLevel\"}]}],\"id\":56}"
+    def result = sendJsonRpcCommand(json, lib)
+}
+
+def getSubLevel() {
+  log.debug "Executing 'getSubLevel' "
+    def lib = "/sony/audio"
+    def json = "{\"method\":\"getSoundSettings\",\"version\":\"1.1\",\"params\":[{\"target\":\"subwooferLevel\"}],\"id\":59}"
+    def result = sendJsonRpcCommand(json, lib)
+}
+
+def getSoundVolume() {
+log.debug "Executing 'getSoundVolume' "
+    def lib = "/sony/audio"
+    def json = "{\"method\":\"getVolumeInformation\",\"version\":\"1.1\",\"params\":[{\"output\":\"\"}],\"id\":78}"
     def result = sendJsonRpcCommand(json, lib)
 }
