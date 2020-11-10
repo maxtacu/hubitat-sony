@@ -104,6 +104,7 @@ def parse(description) {
   
   if (msg.json?.id == 2) {
   	//Set the Global value of state.device on or off
+    if (logEnable) log.debug "Result is ${msg.json.result}"
     state.device = (msg.json.result[0]?.status == "active") ? "on" : "off"
     sendEvent(name: "switch", value: state.device)
     if (logEnable) log.debug "Device is '${state.device}'"
@@ -201,13 +202,11 @@ def poll() {
 
 def UpdateAll() {
     if (logEnable) log.debug("UpdateAllClicked.....")
-    pauseExecution( 5000 )
     getPowerStatus()
-    pauseExecution( 5000 )
+    pauseExecution(2000)
     getSubLevel()
-    pauseExecution( 5000 )
+    pauseExecution(2000)
     getSoundVolume()
-    pauseExecution( 5000 )
 }
 
 //API Commands
@@ -224,7 +223,7 @@ def setPowerStatusOn() {
     log.debug "Executing 'setPowerStatusOn' "
     def lib = "/sony/system"
     def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"active\"}],\"id\":102}"
-    def result = sendJsonRpcCommand(json, lib)    
+    def result = sendJsonRpcCommand(json, lib)  
 }
 
 def setPowerStatusOff() {
