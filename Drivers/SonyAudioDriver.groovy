@@ -99,7 +99,7 @@ def parse(description) {
     state.device_mac = msg.mac
     if (logEnable) log.debug ("MAC Address stored Globally as '${state.device_mac}'")
     //if (logEnable) log.debug "msg '${msg}'"
-    //if (logEnable) log.debug "msg.json '${msg.json?.id}'"
+    if (logEnable) log.debug "msg.json '${msg.json?.id}'"
     
   
   if (msg.json?.id == 2) {
@@ -195,12 +195,14 @@ def poll() {
   }
   if (logEnable) log.debug "Executing 'poll'"
     getPowerStatus()
-    getSubLevel()
-    getSoundVolume()
+    //getSubLevel()
+    //getSoundVolume()
 }
 
 def UpdateAll() {
     if (logEnable) log.debug("UpdateAllClicked.....")
+    getSubLevel()
+    getSoundVolume()
     //sendEvent(name: "switch", value: "off")
 }
 
