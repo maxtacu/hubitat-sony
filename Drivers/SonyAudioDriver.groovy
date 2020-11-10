@@ -48,7 +48,7 @@ def updated(){
 	ipaddress()
 	iphex()
 	refresh()
-	runEvery1Minute(poll)
+	//runEvery1Minute(poll)
 }
 
 def ipaddress(){
@@ -201,27 +201,34 @@ def poll() {
 
 def UpdateAll() {
     if (logEnable) log.debug("UpdateAllClicked.....")
+    pauseExecution( 5000 )
     getPowerStatus()
+    pauseExecution( 5000 )
     getSubLevel()
+    pauseExecution( 5000 )
     getSoundVolume()
+    pauseExecution( 5000 )
 }
 
 //API Commands
 
 
 def getPowerStatus() {
+    log.debug "Executing 'getPowerStatus' "
     def lib = "/sony/system"
     def json = "{\"id\":2,\"method\":\"getPowerStatus\",\"version\":\"1.1\",\"params\":[]}"
     def result = sendJsonRpcCommand(json, lib)
 }
 
 def setPowerStatusOn() {
+    log.debug "Executing 'setPowerStatusOn' "
     def lib = "/sony/system"
     def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"active\"}],\"id\":102}"
     def result = sendJsonRpcCommand(json, lib)    
 }
 
 def setPowerStatusOff() {
+    log.debug "Executing 'setPowerStatusOff' "
     def lib = "/sony/system"
     def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"off\"}],\"id\":102}"
     def result = sendJsonRpcCommand(json, lib)
