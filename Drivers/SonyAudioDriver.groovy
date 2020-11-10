@@ -109,7 +109,7 @@ def parse(description) {
   }
 }
 
-private sendJsonRpcCommand(json, lib) {
+private sendJsonRpcCommand(json,lib) {
   def headers = [:]
   headers.put("HOST", "${state.device_ip}:${device_port}")
   headers.put("Content-Type", "application/json")
@@ -117,7 +117,7 @@ private sendJsonRpcCommand(json, lib) {
 
   def result = new hubitat.device.HubAction(
     method: 'POST',
-    path: '${lib}',
+    path: lib,
     body: json,
     headers: headers
   )
