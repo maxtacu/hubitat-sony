@@ -201,9 +201,9 @@ def poll() {
 
 def UpdateAll() {
     if (logEnable) log.debug("UpdateAllClicked.....")
+    getPowerStatus()
     getSubLevel()
     getSoundVolume()
-    //sendEvent(name: "switch", value: "off")
 }
 
 //API Commands
