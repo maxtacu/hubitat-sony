@@ -37,12 +37,23 @@ preferences {
         input("ipAddress", "string", title:"Sony IP Address", required:true, displayDuringSetup:true)
         input("ipPort", "string", title:"Sony Port (default: 100000)", defaultValue:10000, required:true, displayDuringSetup:true)
         input("PSK", "string", title:"PSK Passphrase", defaultValue:123456, required:false, displayDuringSetup:true)
-        input("refreshInterval", "enum", title: "Refresh Interval in minutes", defaultValue: "10", required:true, displayDuringSetup:true, options: ["1","5","10","15","30"])
+        input("refreshInterval", "enum", title: "Refresh Interval in minutes", defaultValue: "10", required:true, displayDuringSetup:true, options: ["1","5","10","15","30","60"])
         input"logEnable", "bool", title: "Enable debug logging", defaultValue: true
     }
  }
 
  // Generic Private Functions -------
+
+def WOLC() {
+    log.debug "Executing Wake on Lan"
+	def result = new hubitat.device.HubAction (
+  	  	"wake on lan ${state.macAddr}", 
+   		hubitat.device.Protocol.LAN,
+   		null,
+    	[secureCode: "111122223333"]
+	)
+	return result
+}
 
 private postAPICall(lib,json) {
 	def headers = [:]
@@ -164,7 +175,10 @@ private jsonreturnaction(response){
 //Button Commands
 def on(){
     log.debug "on pushed"
+    WOLC()
     setPowerStatusOn()
+    //pauseExecution(2000)
+    //setPowerStatusOn()
 }
 
 def off(){
