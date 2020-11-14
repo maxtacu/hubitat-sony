@@ -26,15 +26,17 @@
     //command "getSoundVolume"
     command "getVoiceMode"
     //command "getNightMode"
-    command "getClearVoiceStatus"
+    //command "getClearVoiceStatus"
     //command "getSystemInfo"
     command "setSubLevel", ["number"]
     command "setNightModeOn"
     command "setNightModeOff"
-    command "setClearVoiceOn"
-    command "setClearVoiceOff"
+    command "getSoundField"
+    command "setSoundField", [[name:"Choose Soundfield", type: "ENUM", constraints: [
+				"","clearAudio","movie","music","sports","game","standard","off"] ] ]
     attribute "SubLevel", "number"
     attribute "NightMode", "string"
+    attribute "SoundField", "string"
     }
 
 preferences {
@@ -136,12 +138,12 @@ private jsonreturnaction(response){
     sendEvent(name: "NightMode", value: state.nightmode, isStateChange: true)
     log.debug "NightMode State is '${state.nightmode}'"
   }
-  if (response.data?.id == 64) {
+    if (response.data?.id == 66) {
   	//Set the Global value of state.nightmode
-    log.debug "clearadio is ${response.data.result[0][0]?.currentValue}"
-    state.clearaudio = response.data.result[0][0]?.currentValue
-    sendEvent(name: "ClearAudio", value: state.nightmode, isStateChange: true)
-    log.debug "ClearAudio State is '${state.clearaudio}'"
+    log.debug "soundfield is ${response.data.result[0][0]?.currentValue}"
+    state.soundfield = response.data.result[0][0]?.currentValue
+    sendEvent(name: "SoundField", value: state.soundfield, isStateChange: true)
+    log.debug "SoundField State is '${state.soundfield}'"
   }
     else {log.debug "no id found for result action"}
 
@@ -166,7 +168,7 @@ def UpdateAll(){
     getMuteStatus()
     getSystemInfo()
     getNightModeStatus()
-    getClearVoiceStatus()
+    getSoundField()
 }
 
 def setVolume(level) {
@@ -317,20 +319,19 @@ def getClearVoiceStatus(){
     postAPICall(lib,json)
 }
 
-def setClearVoiceOn(){
-    log.debug "Executing 'getClearVoiceStatus' "
+def setSoundField(def mode){
+    log.debug "Executing 'setSoundField' "
+    log.debug "variable is ${mode}"
     def lib = "/sony/audio"
-    def json = "{\"method\":\"setSoundSettings\",\"id\":65,\"params\":[{\"settings\":[{\"value\":\"on\",\"target\":\"clearAudio\"}]}],\"version\":\"1.1\"}"
+    def json = "{\"method\":\"setSoundSettings\",\"id\":65,\"params\":[{\"settings\":[{\"value\":\"${mode}\",\"target\":\"soundField\"}]}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
         pauseExecution(2000)
-    getClearVoiceStatus()
+    getSoundField()
 }
 
-def setClearVoiceOff(){
-    log.debug "Executing 'setClearVoiceOff' "
+def getSoundField(){
+    log.debug "Executing 'getSoundField' "
     def lib = "/sony/audio"
-    def json = "{\"method\":\"setSoundSettings\",\"id\":66,\"params\":[{\"settings\":[{\"value\":\"off\",\"target\":\"clearAudio\"}]}],\"version\":\"1.1\"}"
+    def json = "{\"method\":\"getSoundSettings\",\"id\":66,\"params\":[{\"target\":\"soundField\"}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
-        pauseExecution(2000)
-    getClearVoiceStatus()
 }
