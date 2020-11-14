@@ -21,13 +21,7 @@
     capability "AudioVolume"
     //capability "MusicPlayer"
     command "UpdateAll"
-    //command "getPowerStatus"
-    //command "getSubLevel"
-    //command "getSoundVolume"
     command "getVoiceMode"
-    //command "getNightMode"
-    //command "getClearVoiceStatus"
-    //command "getSystemInfo"
     command "setSubLevel", ["number"]
     command "setNightModeOn"
     command "setNightModeOff"
@@ -138,7 +132,7 @@ private jsonreturnaction(response){
     sendEvent(name: "NightMode", value: state.nightmode, isStateChange: true)
     log.debug "NightMode State is '${state.nightmode}'"
   }
-    if (response.data?.id == 66) {
+    if (response.data?.id == 65) {
   	//Set the Global value of state.nightmode
     log.debug "soundfield is ${response.data.result[0][0]?.currentValue}"
     state.soundfield = response.data.result[0][0]?.currentValue
@@ -312,10 +306,10 @@ def setNightModeOff(){
     getNightModeStatus()
 }
 
-def getClearVoiceStatus(){
-    log.debug "Executing 'getClearVoiceStatus' "
+def getSoundField(){
+    log.debug "Executing 'getSoundField' "
     def lib = "/sony/audio"
-    def json = "{\"method\":\"getSoundSettings\",\"id\":64,\"params\":[{\"target\":\"clearAudio\"}],\"version\":\"1.1\"}"
+    def json = "{\"method\":\"getSoundSettings\",\"id\":65,\"params\":[{\"target\":\"soundField\"}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
 }
 
@@ -323,15 +317,8 @@ def setSoundField(def mode){
     log.debug "Executing 'setSoundField' "
     log.debug "variable is ${mode}"
     def lib = "/sony/audio"
-    def json = "{\"method\":\"setSoundSettings\",\"id\":65,\"params\":[{\"settings\":[{\"value\":\"${mode}\",\"target\":\"soundField\"}]}],\"version\":\"1.1\"}"
+    def json = "{\"method\":\"setSoundSettings\",\"id\":66,\"params\":[{\"settings\":[{\"value\":\"${mode}\",\"target\":\"soundField\"}]}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
         pauseExecution(2000)
     getSoundField()
-}
-
-def getSoundField(){
-    log.debug "Executing 'getSoundField' "
-    def lib = "/sony/audio"
-    def json = "{\"method\":\"getSoundSettings\",\"id\":66,\"params\":[{\"target\":\"soundField\"}],\"version\":\"1.1\"}"
-    postAPICall(lib,json)
 }
