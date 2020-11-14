@@ -21,11 +21,11 @@
     capability "AudioVolume"
     //capability "MusicPlayer"
     command "UpdateAll"
-    command "getVoiceMode"
     command "setSubLevel", ["number"]
     command "setNightModeOn"
     command "setNightModeOff"
-    command "getSoundField"
+    //command "getSoundField"
+    //command "getVoiceMode"
     command "setSoundField", [[name:"Choose Soundfield", type: "ENUM", constraints: [
 				"","clearAudio","movie","music","sports","game","standard","off"] ] ]
     attribute "SubLevel", "number"
@@ -183,7 +183,7 @@ def UpdateAll(){
     getSoundField()
     getInterfaceInfo()
     getDeviceMiscSettings()
-    etPowerSettings()
+    getPowerSettings()
 }
 
 def setVolume(level) {
