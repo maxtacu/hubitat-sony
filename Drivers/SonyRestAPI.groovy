@@ -125,6 +125,24 @@ private jsonreturnaction(response){
     log.debug "wirelessMacAddr State is ${response.data.result[0]?.wirelessMacAddr}"
     state.wirelessMacAddr = response.data.result[0]?.wirelessMacAddr
   }
+  if (response.data?.id == 98) {
+  	//Set the Global value of interfaceinfo
+    log.debug "interfaceVersion State is ${response.data.result[0]?.interfaceVersion}"
+    state.interfaceVersion = response.data.result[0]?.interfaceVersion
+    log.debug "modelName State is ${response.data.result[0]?.modelName}"
+    state.modelName = response.data.result[0]?.modelName
+    log.debug "productCategory is State ${response.data.result[0]?.productCategory}"
+    state.productCategory = response.data.result[0]?.productCategory
+    log.debug "productName State is ${response.data.result[0]?.productName}"
+    state.productName = response.data.result[0]?.productName
+    log.debug "serverName State is ${response.data.result[0]?.serverName}"
+    state.serverName = response.data.result[0]?.serverName
+  }
+  if (response.data?.id == 97) {
+  	//Set the Global value of miscsettings
+    log.debug "devicename State is ${response.data.result[0]?.currentValue}"
+    state.devicename = response.data.result[0]?.currentValue
+  }
   if (response.data?.id == 61) {
   	//Set the Global value of state.nightmode
     log.debug "nightmode is ${response.data.result[0][0]?.currentValue}"
@@ -163,6 +181,9 @@ def UpdateAll(){
     getSystemInfo()
     getNightModeStatus()
     getSoundField()
+    getInterfaceInfo()
+    getDeviceMiscSettings()
+    etPowerSettings()
 }
 
 def setVolume(level) {
@@ -322,3 +343,25 @@ def setSoundField(def mode){
         pauseExecution(2000)
     getSoundField()
 }
+
+def getInterfaceInfo(){
+    log.debug "Executing 'getInterfaceInfo' "
+    def lib = "/sony/system"
+    def json = "{\"method\":\"getInterfaceInformation\",\"id\":98,\"params\":[],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def getDeviceMiscSettings(){
+    log.debug "Executing 'getMiscSettings' "
+    def lib = "/sony/system"
+    def json = "{\"method\":\"getDeviceMiscSettings\",\"id\":97,\"params\":[{\"target\":\"deviceName\"}],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def getPowerSettings(){
+    log.debug "Executing 'getPowerSettings' "
+    def lib = "/sony/system"
+    def json = "{\"method\":\"getPowerSettings\",\"id\":96,\"params\":[{\"output\":\"\"}],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
