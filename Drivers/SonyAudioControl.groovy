@@ -9,7 +9,7 @@
  *  There are many hidden methods that are not on sony's audio API documents, some are borrowed on from their TV API URL below
  *  https://pro-bravia.sony.net/develop/integrate/rest-api/spec/index.html
  *  Certain products may need to have their method versions updated depending on the specfic product (a newer soundbar may have 1.1 instead of 1.0)
- *  IMPORT URL: https://raw.githubusercontent.com/jonesalexr/hubitat/main/Drivers/SonyRestAPI.groovy
+ *  IMPORT URL: https://raw.githubusercontent.com/jonesalexr/hubitat/main/Drivers/SonyAudioControl.groovy
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -54,14 +54,14 @@ preferences {
 
 //Below function will run the refresh task according the schedule set in preferences
  private startScheduledRefresh() {
-    log.debug "startScheduledRefresh()"
+    if (logEnable) log.debug "startScheduledRefresh()"
     // Get minutes from settings
     def minutes = settings.refreshInterval?.toInteger()
     if (!minutes) {
         log.warn "Using default refresh interval: 10"
         minutes = 10
     }
-    log.debug "Scheduling polling task for every '${minutes}' minutes"
+    if (logEnable) log.debug "Scheduling polling task for every '${minutes}' minutes"
     if (minutes == 1){
         runEvery1Minute(refresh)
     } else {
@@ -71,7 +71,7 @@ preferences {
 
 //Below function will take place anytime the save button is pressed on the driver page
 def updated() {
-    log.debug "Updated with settings: ${settings}"
+    if (logEnable) log.debug "Updated with settings: ${settings}"
     // Prevent function from running twice on save
     if (!state.updated || now() >= state.updated + 5000){
         // Unschedule existing tasks
@@ -84,9 +84,15 @@ def updated() {
     if (logEnable) runIn(3600,logsOff)
 }
 
+//Below function will disable debugs logs after 3600 seconds called in the updated function
+def logsOff(){
+    log.warn "debug logging disabled..."
+    device.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
 //Below function will send magic packet to the device ID
 def WOLC() {
-    log.debug "Executing Wake on Lan"
+    if (logEnable) log.debug "Executing Wake on Lan"
 	def result = new hubitat.device.HubAction (
   	  	"wake on lan ${state.macAddr}", 
    		hubitat.device.Protocol.LAN,
@@ -111,7 +117,7 @@ private postAPICall(lib,json) {
 		query: null,
 		body: json,
 	]
-    log.debug "${requestParams}"
+    if (logEnable) log.debug "${requestParams}"
 	httpPostJson(requestParams) { response ->
 		def msg = ""
 		if (response?.status == 200) {
@@ -120,148 +126,148 @@ private postAPICall(lib,json) {
 		else {
 			msg = "${response?.status}"
 		}
-		log.debug "Sony Response: ${msg} (${response.data})"
+		if (logEnable) log.debug "Sony Response: ${msg} (${response.data})"
         jsonreturnaction(response)
 	}
 }
 
 //Below function will take action on the response message from the API Post Call
 private jsonreturnaction(response){
-    log.debug "ID is ${response.data.id}"
-    log.debug "data result is ${response.data.result}"
-    log.debug "data error is ${response.data.error}"
+    if (logEnable) log.debug "ID is ${response.data.id}"
+    if (logEnable) log.debug "data result is ${response.data.result}"
+    if (logEnable) log.debug "data error is ${response.data.error}"
 
     String responsedataerror = response.data.error
-    log.debug "dataerrorstring is ${responsedataerror}"
+    if (logEnable) log.debug "dataerrorstring is ${responsedataerror}"
 
-    if (responsedataerror != "null"){
+    if (responsedataerror != null){
     log.warn "data error is ${response.data.error}"
     }
 
   if (response.data?.id == 2) {
   	//Set the Global value of state.device on or off
-    log.debug "Status is ${response.data.result[0]?.status}"
+    if (logEnable) log.debug "Status is ${response.data.result[0]?.status}"
     state.device = (response.data.result[0]?.status == "active") ? "on" : "off"
     sendEvent(name: "switch", value: state.device, isStateChange: true)
-    log.debug "Device State is '${state.device}'"
+    if (logEnable) log.debug "Device State is '${state.device}'"
   }
 
   if (response.data?.id == 50) {
   	//Set the Global value of state.devicevolume
-    log.debug "Volume is ${response.data.result[0][0]?.volume}"
+    if (logEnable) log.debug "Volume is ${response.data.result[0][0]?.volume}"
     state.devicevolume = response.data.result[0][0]?.volume
        sendEvent(name: "volume", value: state.devicevolume, isStateChange: true)
-    log.debug "DeviceVolume State is '${state.devicevolume}'"
+    if (logEnable) log.debug "DeviceVolume State is '${state.devicevolume}'"
   }
 
   if (response.data?.id == 55) {
   	//Set the Global value of state.sublevel
-    log.debug "SubLevel is ${response.data.result[0][0]?.currentValue}"
+    if (logEnable) log.debug "SubLevel is ${response.data.result[0][0]?.currentValue}"
     state.sublevel = response.data.result[0][0]?.currentValue
     sendEvent(name: "SubLevel", value: state.sublevel, isStateChange: true)
-    log.debug "DeviceSublevel State is '${state.sublevel}'"
+    if (logEnable) log.debug "DeviceSublevel State is '${state.sublevel}'"
   }
   if (response.data?.id == 40) {
   	//Set the Global value of state.devicemute
-    log.debug "Mute is ${response.data.result[0][0]?.mute}"
+    if (logEnable) log.debug "Mute is ${response.data.result[0][0]?.mute}"
     state.devicemute = response.data.result[0][0]?.mute
     sendEvent(name: "mute", value: state.devicemute, isStateChange: true)
-    log.debug "Devicemute State is '${state.devicemute}'"
+    if (logEnable) log.debug "Devicemute State is '${state.devicemute}'"
   }
   if (response.data?.id == 99) {
   	//Set the Global value of systeminfo
-    log.debug "bdAddr State is ${response.data.result[0]?.bdAddr}"
+    if (logEnable) log.debug "bdAddr State is ${response.data.result[0]?.bdAddr}"
     state.bdAddr = response.data.result[0]?.bdAddr
-    log.debug "macAddr State is ${response.data.result[0]?.macAddr}"
+    if (logEnable) log.debug "macAddr State is ${response.data.result[0]?.macAddr}"
     state.macAddr = response.data.result[0]?.macAddr
-    log.debug "version is State ${response.data.result[0]?.version}"
+    if (logEnable) log.debug "version is State ${response.data.result[0]?.version}"
     state.version = response.data.result[0]?.version
-    log.debug "wirelessMacAddr State is ${response.data.result[0]?.wirelessMacAddr}"
+    if (logEnable) log.debug "wirelessMacAddr State is ${response.data.result[0]?.wirelessMacAddr}"
     state.wirelessMacAddr = response.data.result[0]?.wirelessMacAddr
   }
   if (response.data?.id == 98) {
   	//Set the Global value of interfaceinfo
-    log.debug "interfaceVersion State is ${response.data.result[0]?.interfaceVersion}"
+    if (logEnable) log.debug "interfaceVersion State is ${response.data.result[0]?.interfaceVersion}"
     state.interfaceVersion = response.data.result[0]?.interfaceVersion
-    log.debug "modelName State is ${response.data.result[0]?.modelName}"
+    if (logEnable) log.debug "modelName State is ${response.data.result[0]?.modelName}"
     state.modelName = response.data.result[0]?.modelName
-    log.debug "productCategory is State ${response.data.result[0]?.productCategory}"
+    if (logEnable) log.debug "productCategory is State ${response.data.result[0]?.productCategory}"
     state.productCategory = response.data.result[0]?.productCategory
-    log.debug "productName State is ${response.data.result[0]?.productName}"
+    if (logEnable) log.debug "productName State is ${response.data.result[0]?.productName}"
     state.productName = response.data.result[0]?.productName
-    log.debug "serverName State is ${response.data.result[0]?.serverName}"
+    if (logEnable) log.debug "serverName State is ${response.data.result[0]?.serverName}"
     state.serverName = response.data.result[0]?.serverName
   }
   if (response.data?.id == 97) {
   	//Set the Global value of miscsettings
-    log.debug "devicename State is ${response.data.result[0]?.currentValue}"
+    if (logEnable) log.debug "devicename State is ${response.data.result[0]?.currentValue}"
     state.devicename = response.data.result[0]?.currentValue
   }
   if (response.data?.id == 61) {
   	//Set the Global value of state.nightmode
-    log.debug "nightmode is ${response.data.result[0][0]?.currentValue}"
+    if (logEnable) log.debug "nightmode is ${response.data.result[0][0]?.currentValue}"
     state.nightmode = response.data.result[0][0]?.currentValue
     sendEvent(name: "NightMode", value: state.nightmode, isStateChange: true)
-    log.debug "NightMode State is '${state.nightmode}'"
+    if (logEnable) log.debug "NightMode State is '${state.nightmode}'"
   }
     if (response.data?.id == 65) {
   	//Set the Global value of state.nightmode
-    log.debug "soundfield is ${response.data.result[0][0]?.currentValue}"
+    if (logEnable) log.debug "soundfield is ${response.data.result[0][0]?.currentValue}"
     state.soundfield = response.data.result[0][0]?.currentValue
     sendEvent(name: "SoundField", value: state.soundfield, isStateChange: true)
-    log.debug "SoundField State is '${state.soundfield}'"
+    if (logEnable) log.debug "SoundField State is '${state.soundfield}'"
   }
-    else {log.debug "no id found for result action"}
+    else {if (logEnable) log.debug "no id found for result action"}
 
 }
 
 //Button Commands
 def on(){
-    log.debug "on pushed"
+    if (logEnable) log.debug "on pushed"
     if (WOLEnable) WOLC()
     setPowerStatusOn()
 }
 
 def off(){
-    log.debug "off pushed"
+    if (logEnable) log.debug "off pushed"
     setPowerStatusOff()
 }
 
 
 def setVolume(level) {
-    log.debug "set volume pushed with ${level}"
+    if (logEnable) log.debug "set volume pushed with ${level}"
     setSoundVolume(level)
 }
 
 def volumeUp() {
-    log.debug "volumeup pushed"
+    if (logEnable) log.debug "volumeup pushed"
     def level="+1"
     setSoundVolume(level)
 }
 
 def volumeDown() {
-    log.debug "volumeup pushed"
+    if (logEnable) log.debug "volumeup pushed"
     def level="-1"
     setSoundVolume(level)
 }
 
 def mute(){
-    log.debug "mute pushed"
+    if (logEnable) log.debug "mute pushed"
     setMute()
 }
 
 def unmute(){
-    log.debug "unmute pushed"
+    if (logEnable) log.debug "unmute pushed"
     setUnMute()
 }
 
 def poll() {
-    log.debug "Executing poll(), unscheduling existing"
+    if (logEnable) log.debug "Executing poll(), unscheduling existing"
     refresh()
 }
 
 def refresh() {
-    log.debug "Refreshing"
+    if (logEnable) log.debug "Refreshing"
     getPowerStatus()
     getSoundVolume()
     getSubLevel()
@@ -277,14 +283,14 @@ def refresh() {
 //API Commands
 
 def getPowerStatus() {
-    log.debug "Executing 'getPowerStatus' "
+    if (logEnable) log.debug "Executing 'getPowerStatus' "
     def lib = "/sony/system"
     def json = "{\"id\":2,\"method\":\"getPowerStatus\",\"version\":\"1.1\",\"params\":[]}"
     postAPICall(lib,json)
 }
 
 def setPowerStatusOn() {
-    log.debug "Executing 'setPowerStatusOn' "
+    if (logEnable) log.debug "Executing 'setPowerStatusOn' "
     def lib = "/sony/system"
     def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"active\"}],\"id\":3}"
     postAPICall(lib,json)
@@ -293,7 +299,7 @@ def setPowerStatusOn() {
 }
 
 def setPowerStatusOff() {
-    log.debug "Executing 'setPowerStatusOff' "
+    if (logEnable) log.debug "Executing 'setPowerStatusOff' "
     def lib = "/sony/system"
     def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"off\"}],\"id\":4}"
     postAPICall(lib,json)
@@ -302,14 +308,14 @@ def setPowerStatusOff() {
 }
 
 def getSoundVolume() {
-log.debug "Executing 'getSoundVolume' "
+if (logEnable) log.debug "Executing 'getSoundVolume' "
     def lib = "/sony/audio"
     def json = "{\"method\":\"getVolumeInformation\",\"version\":\"1.1\",\"params\":[{\"output\":\"\"}],\"id\":50}"
     postAPICall(lib,json)
 }
 
 def setSoundVolume(def Level) {
-    log.debug "Executing 'setSoundVolume' with ${level} "
+    if (logEnable) log.debug "Executing 'setSoundVolume' with ${level} "
     def lib = "/sony/audio"
     def json = "{\"method\":\"setAudioVolume\",\"version\":\"1.1\",\"params\":[{\"volume\":\"${Level}\",\"output\":\"\"}],\"id\":51}"
     postAPICall(lib,json)
@@ -317,14 +323,14 @@ def setSoundVolume(def Level) {
 }
 
 def getSubLevel() {
-  log.debug "Executing 'getSubLevel' "
+  if (logEnable) log.debug "Executing 'getSubLevel' "
     def lib = "/sony/audio"
     def json = "{\"method\":\"getSoundSettings\",\"version\":\"1.1\",\"params\":[{\"target\":\"subwooferLevel\"}],\"id\":55}"
     postAPICall(lib,json)
 }
 
 def setSubLevel(def Level) {
-  log.debug "Executing 'setSubLevel' with ${Level}"
+  if (logEnable) log.debug "Executing 'setSubLevel' with ${Level}"
     def lib = "/sony/audio"
     def json = "{\"method\":\"setSoundSettings\",\"version\":\"1.1\",\"params\":[{\"settings\":[{\"value\":\"${Level}\",\"target\":\"subwooferLevel\"}]}],\"id\":56}"
     postAPICall(lib,json)
@@ -332,14 +338,14 @@ def setSubLevel(def Level) {
 }
 
 def getMuteStatus(){
-    log.debug "Executing 'getMuteStatus' "
+    if (logEnable) log.debug "Executing 'getMuteStatus' "
     def lib = "/sony/audio"
     def json = "{\"method\":\"getVolumeInformation\",\"version\":\"1.1\",\"params\":[{\"output\":\"\"}],\"id\":40}"
     postAPICall(lib,json)
 }
 
 def setMute(){
-    log.debug "Executing 'setMute' "
+    if (logEnable) log.debug "Executing 'setMute' "
     def lib = "/sony/audio"
     def json = "{\"method\":\"setAudioMute\",\"id\":41,\"params\":[{\"mute\":\"on\"}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
@@ -348,7 +354,7 @@ def setMute(){
 }
 
 def setUnMute(){
-    log.debug "Executing 'setUnMute' "
+    if (logEnable) log.debug "Executing 'setUnMute' "
     def lib = "/sony/audio"
     def json = "{\"method\":\"setAudioMute\",\"id\":42,\"params\":[{\"mute\":\"off\"}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
@@ -357,21 +363,21 @@ def setUnMute(){
 }
 
 def getSystemInfo(){
-    log.debug "Executing 'getSystemInfo' "
+    if (logEnable) log.debug "Executing 'getSystemInfo' "
     def lib = "/sony/system"
     def json = "{\"method\":\"getSystemInformation\",\"id\":99,\"params\":[],\"version\":\"1.4\"}"
     postAPICall(lib,json)
 }
 
 def getNightModeStatus(){
-    log.debug "Executing 'getNightModeStatus' "
+    if (logEnable) log.debug "Executing 'getNightModeStatus' "
     def lib = "/sony/audio"
     def json = "{\"method\":\"getSoundSettings\",\"id\":61,\"params\":[{\"target\":\"nightMode\"}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
 }
 
 def setNightModeOn(){
-    log.debug "Executing 'setNightModeOn' "
+    if (logEnable) log.debug "Executing 'setNightModeOn' "
     def lib = "/sony/audio"
     def json = "{\"method\":\"setSoundSettings\",\"id\":62,\"params\":[{\"settings\":[{\"value\":\"on\",\"target\":\"nightMode\"}]}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
@@ -380,7 +386,7 @@ def setNightModeOn(){
 }
 
 def setNightModeOff(){
-    log.debug "Executing 'setNightModeOff' "
+    if (logEnable) log.debug "Executing 'setNightModeOff' "
     def lib = "/sony/audio"
     def json = "{\"method\":\"setSoundSettings\",\"id\":63,\"params\":[{\"settings\":[{\"value\":\"off\",\"target\":\"nightMode\"}]}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
@@ -389,15 +395,15 @@ def setNightModeOff(){
 }
 
 def getSoundField(){
-    log.debug "Executing 'getSoundField' "
+    if (logEnable) log.debug "Executing 'getSoundField' "
     def lib = "/sony/audio"
     def json = "{\"method\":\"getSoundSettings\",\"id\":65,\"params\":[{\"target\":\"soundField\"}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
 }
 
 def setSoundField(def mode){
-    log.debug "Executing 'setSoundField' "
-    log.debug "variable is ${mode}"
+    if (logEnable) log.debug "Executing 'setSoundField' "
+    if (logEnable) log.debug "variable is ${mode}"
     def lib = "/sony/audio"
     def json = "{\"method\":\"setSoundSettings\",\"id\":66,\"params\":[{\"settings\":[{\"value\":\"${mode}\",\"target\":\"soundField\"}]}],\"version\":\"1.1\"}"
     postAPICall(lib,json)
@@ -406,28 +412,28 @@ def setSoundField(def mode){
 }
 
 def getInterfaceInfo(){
-    log.debug "Executing 'getInterfaceInfo' "
+    if (logEnable) log.debug "Executing 'getInterfaceInfo' "
     def lib = "/sony/system"
     def json = "{\"method\":\"getInterfaceInformation\",\"id\":98,\"params\":[],\"version\":\"1.0\"}"
     postAPICall(lib,json)
 }
 
 def getDeviceMiscSettings(){
-    log.debug "Executing 'getMiscSettings' "
+    if (logEnable) log.debug "Executing 'getMiscSettings' "
     def lib = "/sony/system"
     def json = "{\"method\":\"getDeviceMiscSettings\",\"id\":97,\"params\":[{\"target\":\"deviceName\"}],\"version\":\"1.0\"}"
     postAPICall(lib,json)
 }
 
 def getPowerSettings(){
-    log.debug "Executing 'getPowerSettings' "
+    if (logEnable) log.debug "Executing 'getPowerSettings' "
     def lib = "/sony/system"
     def json = "{\"method\":\"getPowerSettings\",\"id\":96,\"params\":[{\"output\":\"\"}],\"version\":\"1.0\"}"
     postAPICall(lib,json)
 }
 
 def sendDebugString(libpath,jsonmsg){
-    log.debug "Executing 'sendDebugString' "
+    if (logEnable) log.debug "Executing 'sendDebugString' "
     def lib = libpath
     def json = jsonmsg
     postAPICall(lib,json)
