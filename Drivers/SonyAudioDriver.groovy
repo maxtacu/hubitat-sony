@@ -253,3 +253,4 @@ log.debug "Executing 'getSoundVolume' "
     def json = "{\"method\":\"getVolumeInformation\",\"version\":\"1.1\",\"params\":[{\"output\":\"\"}],\"id\":78}"
     def result = sendJsonRpcCommand(json, lib)
 }
+

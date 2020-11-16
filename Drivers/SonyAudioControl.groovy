@@ -4,12 +4,13 @@
  *  Utilized the below URL for commands and values
  *  https://developer.sony.com/develop/audio-control-api/api-references/api-overview-2
  *  Driver was devleloped and tested for a sony CT800, certain commands may not work for other items
+ *  STR-DN1080, SRS-ZR5, HT-Z9F, HT-MT500, HT-ST5000 are the listed devices, but almost any sony networked audio device should work with little modification
  *  Device capability matrix is in the URL below.
  *  https://developer.sony.com/develop/audio-control-api/api-references/device-uri
  *  There are many hidden methods that are not on sony's audio API documents, some are borrowed on from their TV API URL below
  *  https://pro-bravia.sony.net/develop/integrate/rest-api/spec/index.html
- *  Certain products may need to have their method versions updated depending on the specfic product (a newer soundbar may have 1.1 instead of 1.0)
- *  IMPORT URL: https://raw.githubusercontent.com/jonesalexr/hubitat/main/Drivers/SonyAudioControl.groovy
+ *  Certain products may need to have their method versions updated depending on the specfic product (a newer soundbar may have 1.1 instead of 1.0) 
+ *  IMPORT URL: https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyAudioControl.groovy
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -38,6 +39,7 @@
     attribute "SubLevel", "number"
     attribute "NightMode", "string"
     attribute "SoundField", "string"
+    attribute "CurrentInput", "string"
     }
 
 preferences {
@@ -45,12 +47,12 @@ preferences {
         input("ipPort", "string", title:"Sony Port (default: 100000)", defaultValue:10000, required:true, displayDuringSetup:true)
         input("PSK", "string", title:"PSK Passphrase", defaultValue:"", required:false, displayDuringSetup:true)
         input("WOLEnable", "bool", title:"Send WOL Packet when off", defaultValue:false)
-        input("refreshInterval", "enum", title: "Refresh Interval in minutes", defaultValue: "10", required:true, displayDuringSetup:true, options: ["1","5","10","15","30","60"])
+        input("refreshInterval", "enum", title: "Refresh Interval in minutes", defaultValue: "10", required:true, displayDuringSetup:true, options: ["1","5","10","15","30"])
         input("logEnable", "bool", title: "Enable debug logging", defaultValue: true)
     }
  }
 
- // Utility Functions
+ // Utility Functions-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 //Below function will run the refresh task according the schedule set in preferences
  private startScheduledRefresh() {
@@ -71,7 +73,7 @@ preferences {
 
 //Below function will take place anytime the save button is pressed on the driver page
 def updated() {
-    if (logEnable) log.debug "Updated with settings: ${settings}"
+    log.warn "Updated with settings: ${settings}"
     // Prevent function from running twice on save
     if (!state.updated || now() >= state.updated + 5000){
         // Unschedule existing tasks
@@ -217,11 +219,21 @@ private jsonreturnaction(response){
     sendEvent(name: "SoundField", value: state.soundfield, isStateChange: true)
     if (logEnable) log.debug "SoundField State is '${state.soundfield}'"
   }
+    if (response.data?.id == 70) {
+  	//Set the Global value of state.currentinput
+    if (logEnable) log.debug "currentinput is ${response.data.result[0][0]?.uri}"
+    state.currentinput = response.data.result[0][0]?.uri
+    sendEvent(name: "CurrentInput", value: state.currentinput, isStateChange: true)
+    if (logEnable) log.debug "CurrentInput State is '${state.currentinput}'"
+  }
     else {if (logEnable) log.debug "no id found for result action"}
 
 }
 
-//Button Commands
+//Button Commands  ------------------------------------------------------------------------------------------------------------------
+
+
+//Switch Capability+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def on(){
     if (logEnable) log.debug "on pushed"
     if (WOLEnable) WOLC()
@@ -233,7 +245,28 @@ def off(){
     setPowerStatusOff()
 }
 
+def poll() {
+    if (logEnable) log.debug "Executing poll(), unscheduling existing"
+    refresh()
+}
 
+def refresh() {
+    if (logEnable) log.debug "Refreshing"
+    getPowerStatus()
+    getSoundVolume()
+    getSubLevel()
+    getMuteStatus()
+    getSystemInfo()
+    getNightModeStatus()
+    getSoundField()
+    getInterfaceInfo()
+    getDeviceMiscSettings()
+    getPowerSettings()
+    getCurrentSource()
+}
+
+
+//AudioVolume Capability++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def setVolume(level) {
     if (logEnable) log.debug "set volume pushed with ${level}"
     setSoundVolume(level)
@@ -261,26 +294,65 @@ def unmute(){
     setUnMute()
 }
 
-def poll() {
-    if (logEnable) log.debug "Executing poll(), unscheduling existing"
-    refresh()
+def  nextTrack(){
+    //todo
+    if (logEnable) log.debug "nextTrack pushed"
 }
 
-def refresh() {
-    if (logEnable) log.debug "Refreshing"
-    getPowerStatus()
-    getSoundVolume()
-    getSubLevel()
-    getMuteStatus()
-    getSystemInfo()
-    getNightModeStatus()
-    getSoundField()
-    getInterfaceInfo()
-    getDeviceMiscSettings()
-    getPowerSettings()
+def pause(){
+    //todo
+    if (logEnable) log.debug "pause pushed"
 }
 
-//API Commands
+def play(){
+    //todo
+    if (logEnable) log.debug "play pushed"
+}
+
+def playtext(text){
+    //todo
+    if (logEnable) log.debug "nextTrack pushed"
+}
+
+def playTrack(trackuri){
+    //todo
+    if (logEnable) log.debug "nextTrack pushed"
+}
+
+def previousTrack(){
+    //todo
+    if (logEnable) log.debug "nextTrack pushed"
+}
+
+def restoreTrack(trackuri){
+    //todo
+    if (logEnable) log.debug "nextTrack pushed"
+}
+
+def resumeTrack(trackuri){
+    //todo
+    if (logEnable) log.debug "nextTrack pushed"
+}
+
+def setLevel(volumelevel){
+    //todo
+    if (logEnable) log.debug "nextTrack pushed"
+}
+
+def setTrack(trackuri){
+    //todo
+    if (logEnable) log.debug "nextTrack pushed"
+}
+
+def stop(){
+    //todo
+    if (logEnable) log.debug "nextTrack pushed"
+}
+
+
+
+
+//API Commands------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def getPowerStatus() {
     if (logEnable) log.debug "Executing 'getPowerStatus' "
@@ -436,5 +508,12 @@ def sendDebugString(libpath,jsonmsg){
     if (logEnable) log.debug "Executing 'sendDebugString' "
     def lib = libpath
     def json = jsonmsg
+    postAPICall(lib,json)
+}
+
+def getCurrentSource(){
+        if (logEnable) log.debug "Executing 'getCurrentSource' "
+    def lib = "/sony/avContent"
+    def json = "{\"method\":\"getPlayingContentInfo\",\"id\":70,\"params\":[{\"output\":\"\"}],\"version\":\"1.2\"}"
     postAPICall(lib,json)
 }
