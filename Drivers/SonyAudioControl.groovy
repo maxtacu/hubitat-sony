@@ -1,5 +1,5 @@
 /**
- *  Sony Audio Control RestfulAPI
+ *  Sony Audio Control
  *  Hubitat Integration
  *  Utilized the below URL for commands and values
  *  https://developer.sony.com/develop/audio-control-api/api-references/api-overview-2
@@ -23,7 +23,7 @@
  *
  */
  metadata {
-  definition (name: "Sony REST API", namespace: "ajones", author: "Alex Jones") {
+  definition (name: "Sony Audio Control", namespace: "ajones", author: "Alex Jones") {
     capability "Switch"
     capability "Refresh"
     capability "Polling"
