@@ -35,7 +35,10 @@
     command "setSoundField", [[name:"Choose Soundfield", type: "ENUM", constraints: [
 				"","clearAudio","movie","music","sports","game","standard","off"] ] ]
     //Enable below command if you want to return json data for debugging. This might be used to see which methods your device supports or to test a post call.            
-    command "sendDebugString",[[name:"libpath",type:"STRING", description:"path to lib", constraints:["STRING"]],[name:"jsonmsg",type:"JSON_OBJECT", description:"json msg for post", constraints:["JSON_OBJECT"]]]
+    command "sendDebugString",[[name:"libpath",type:"STRING", description:"path to lib", constraints:["STRING"]],
+    [name:"jsonmsg",type:"JSON_OBJECT", description:"json msg for post", constraints:["JSON_OBJECT"]],
+    [name:"parsestring",type:"STRING", description:"check parse", constraints:["STRING"]]
+    ]
     attribute "SubLevel", "number"
     attribute "NightMode", "string"
     attribute "SoundField", "string"
@@ -84,6 +87,7 @@ def updated() {
     }
     state.updated = now()
     if (logEnable) runIn(3600,logsOff)
+    refresh()
 }
 
 //Below function will disable debugs logs after 3600 seconds called in the updated function
@@ -129,15 +133,20 @@ private postAPICall(lib,json) {
 			msg = "${response?.status}"
 		}
 		if (logEnable) log.debug "Sony Response: ${msg} (${response.data})"
-        jsonreturnaction(response)
-	}
+
+        if (response.data.id != 999){
+            jsonreturnaction(response)
+	    }
+        if (response.data.id == 999){
+            jsonreturnaction(response)
+        }
+    }
 }
 
 //Below function will take action on the response message from the API Post Call
 private jsonreturnaction(response){
     if (logEnable) log.debug "ID is ${response.data.id}"
-    if (logEnable) log.debug "data result is ${response.data.result}"
-    if (logEnable) log.debug "data error is ${response.data.error}"
+    if (logEnable) log.debug "raw data result is ${response.data.result}"
 
     String responsedataerror = response.data.error
     if (logEnable) log.debug "dataerrorstring is ${responsedataerror}"
@@ -149,32 +158,32 @@ private jsonreturnaction(response){
   if (response.data?.id == 2) {
   	//Set the Global value of state.device on or off
     if (logEnable) log.debug "Status is ${response.data.result[0]?.status}"
-    state.device = (response.data.result[0]?.status == "active") ? "on" : "off"
-    sendEvent(name: "switch", value: state.device, isStateChange: true)
-    if (logEnable) log.debug "Device State is '${state.device}'"
+    def devicestate = (response.data.result[0]?.status == "active") ? "on" : "off"
+    sendEvent(name: "switch", value: devicestate, isStateChange: true)
+    if (logEnable) log.debug "DeviceState Event is '${devicestate}'"
   }
 
   if (response.data?.id == 50) {
   	//Set the Global value of state.devicevolume
     if (logEnable) log.debug "Volume is ${response.data.result[0][0]?.volume}"
-    state.devicevolume = response.data.result[0][0]?.volume
-       sendEvent(name: "volume", value: state.devicevolume, isStateChange: true)
-    if (logEnable) log.debug "DeviceVolume State is '${state.devicevolume}'"
+    def devicevolume = response.data.result[0][0]?.volume
+       sendEvent(name: "volume", value: devicevolume, isStateChange: true)
+    if (logEnable) log.debug "DeviceVolume Event is '${devicevolume}'"
   }
 
   if (response.data?.id == 55) {
   	//Set the Global value of state.sublevel
     if (logEnable) log.debug "SubLevel is ${response.data.result[0][0]?.currentValue}"
-    state.sublevel = response.data.result[0][0]?.currentValue
-    sendEvent(name: "SubLevel", value: state.sublevel, isStateChange: true)
-    if (logEnable) log.debug "DeviceSublevel State is '${state.sublevel}'"
+    def sublevel = response.data.result[0][0]?.currentValue
+    sendEvent(name: "SubLevel", value: sublevel, isStateChange: true)
+    if (logEnable) log.debug "Sublevel Event is '${sublevel}'"
   }
   if (response.data?.id == 40) {
   	//Set the Global value of state.devicemute
     if (logEnable) log.debug "Mute is ${response.data.result[0][0]?.mute}"
-    state.devicemute = response.data.result[0][0]?.mute
-    sendEvent(name: "mute", value: state.devicemute, isStateChange: true)
-    if (logEnable) log.debug "Devicemute State is '${state.devicemute}'"
+    def devicemute = response.data.result[0][0]?.mute
+    sendEvent(name: "mute", value: devicemute, isStateChange: true)
+    if (logEnable) log.debug "Devicemute State is '${devicemute}'"
   }
   if (response.data?.id == 99) {
   	//Set the Global value of systeminfo
@@ -208,23 +217,28 @@ private jsonreturnaction(response){
   if (response.data?.id == 61) {
   	//Set the Global value of state.nightmode
     if (logEnable) log.debug "nightmode is ${response.data.result[0][0]?.currentValue}"
-    state.nightmode = response.data.result[0][0]?.currentValue
-    sendEvent(name: "NightMode", value: state.nightmode, isStateChange: true)
-    if (logEnable) log.debug "NightMode State is '${state.nightmode}'"
+    def nightmode = response.data.result[0][0]?.currentValue
+    sendEvent(name: "NightMode", value: nightmode, isStateChange: true)
+    if (logEnable) log.debug "NightMode event is '${nightmode}'"
   }
     if (response.data?.id == 65) {
   	//Set the Global value of state.nightmode
     if (logEnable) log.debug "soundfield is ${response.data.result[0][0]?.currentValue}"
-    state.soundfield = response.data.result[0][0]?.currentValue
-    sendEvent(name: "SoundField", value: state.soundfield, isStateChange: true)
-    if (logEnable) log.debug "SoundField State is '${state.soundfield}'"
+    def soundfield = response.data.result[0][0]?.currentValue
+    sendEvent(name: "SoundField", value: soundfield, isStateChange: true)
+    if (logEnable) log.debug "SoundField event is '${soundfield}'"
   }
     if (response.data?.id == 70) {
   	//Set the Global value of state.currentinput
     if (logEnable) log.debug "currentinput is ${response.data.result[0][0]?.uri}"
-    state.currentinput = response.data.result[0][0]?.uri
-    sendEvent(name: "CurrentInput", value: state.currentinput, isStateChange: true)
-    if (logEnable) log.debug "CurrentInput State is '${state.currentinput}'"
+    def currentinput = response.data.result[0][0]?.uri
+    sendEvent(name: "CurrentInput", value: currentinput, isStateChange: true)
+    if (logEnable) log.debug "CurrentInput State is '${currentinput}'"
+    
+  }
+    if (response.data?.id == 999) {
+  	//Set the Global value of state.currentinput
+    if (logEnable) log.debug "parsestring result is ${response.data.result}"
   }
     else {if (logEnable) log.debug "no id found for result action"}
 
@@ -505,6 +519,7 @@ def getPowerSettings(){
 }
 
 def sendDebugString(libpath,jsonmsg){
+    //add ID of 999 to test PARSE message
     if (logEnable) log.debug "Executing 'sendDebugString' "
     def lib = libpath
     def json = jsonmsg
