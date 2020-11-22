@@ -29,14 +29,38 @@
     capability "Polling"
     capability "AudioVolume"
     //capability "MusicPlayer"
-    command "getInfo"
     command "Reboot"
+    command "TerminateApps"
+    command "SendURL", ["string"]
+  command "LaunchApp", [[name:"ChooseApp", type: "ENUM", constraints: [
+				"",
+                "YouTube",
+                "TV",
+                "Program Guide",
+                "Hulu",
+                "Pluto TV",
+                "Prime Video",
+                "Netflix",
+                "tinyCam PRO",
+                "Disney+",
+                "ESPN",
+                "Plex",
+                "Sling TV",
+                "Spotify"
+                ] ] ]
+    command "InputSelect", [[name:"Choose Input", type: "ENUM", constraints: [
+				"",
+                "HDMI1",
+                "HDMI2",
+                "HDMI3",
+                "HDMI4"
+                ] ] ]
     //Enable below command if you want to return json data for debugging. This might be used to see which methods your device supports or to test a post call.            
     command "sendDebugString",[[name:"libpath",type:"STRING", description:"path to lib", constraints:["STRING"]],
-    [name:"jsonmsg",type:"JSON_OBJECT", description:"json msg for post", constraints:["JSON_OBJECT"]],
-    [name:"parsestring",type:"STRING", description:"check parse", constraints:["STRING"]]
+    [name:"jsonmsg",type:"JSON_OBJECT", description:"json msg for post", constraints:["JSON_OBJECT"]]
     ]
     command "keyPress", [[name:"Key Press Action", type: "ENUM", constraints: [
+                "",
                 "Enter",
                 "ChannelUp",
                 "ChannelDown",
@@ -244,16 +268,16 @@ private jsonreturnaction(response){
   }
   if (response.data?.id == 97) {
   	//Set the Global value of EthernetSettings
-    if (logEnable) log.debug "hwAddr State is ${response.data.result[0]?.hwAddr}"
-    state.hwAddr = response.data.result[0]?.hwAddr
-    if (logEnable) log.debug "ipAddrV4 State is ${response.data.result[0]?.ipAddrV4}"
-    state.ipAddrV4 = response.data.result[0]?.ipAddrV4
-    if (logEnable) log.debug "ipAddrV6 State is ${response.data.result[0]?.ipAddrV6}"
-    state.ipAddrV6 = response.data.result[0]?.ipAddrV6
-    if (logEnable) log.debug "gateway State is ${response.data.result[0]?.gateway}"
+    if (logEnable) log.debug "hwAddr State is ${response.data.result[0][0]?.hwAddr}"
+    state.hwAddr = response.data.result[0][0]?.hwAddr
+    if (logEnable) log.debug "ipAddrV4 State is ${response.data.result[0][0]?.ipAddrV4}"
+    state.ipAddrV4 = response.data.result[0][0]?.ipAddrV4
+    if (logEnable) log.debug "ipAddrV6 State is ${response.data.result[0][0]?.ipAddrV6}"
+    state.ipAddrV6 = response.data.result[0][0]?.ipAddrV6
+    if (logEnable) log.debug "gateway State is ${response.data.result[0][0]?.gateway}"
     state.gateway = response.data.result[0][0]?.gateway
     if (logEnable) log.debug "dns State is ${response.data.result[0][0]?.dns}"
-    state.dns = response.data.result[0]?.dns
+    state.dns = response.data.result[0][0]?.dns
   }
   if (response.data?.id == 61) {
   	//Set the Global value of state.nightmode
@@ -271,11 +295,26 @@ private jsonreturnaction(response){
   }
     if (response.data?.id == 70) {
   	//Set the Global value of state.currentinput
-    if (logEnable) log.debug "currentinput is ${response.data.result[0][0]?.uri}"
-    def currentinput = response.data.result[0][0]?.uri
-    sendEvent(name: "CurrentInput", value: currentinput, isStateChange: true)
-    if (logEnable) log.debug "CurrentInput State is '${currentinput}'"
-    
+        if (responsedataerror == null){
+            if (logEnable) log.debug "currentinput is ${response.data.result[0]?.uri}"
+            def currentinput = response.data.result[0]?.uri
+            sendEvent(name: "CurrentInput", value: currentinput, isStateChange: true)
+            if (logEnable) log.debug "CurrentInput State is '${currentinput}'"
+            if (logEnable) log.debug "source State is ${response.data.result[0]?.source}"
+            state.source = response.data.result[0]?.source
+            if (logEnable) log.debug "title State is ${response.data.result[0]?.title}"
+            state.title = response.data.result[0]?.title
+            if (logEnable) log.debug "dispNum State is ${response.data.result[0]?.dispNum}"
+            state.dispNum = response.data.result[0]?.dispNum
+            if (logEnable) log.debug "originalDispNum State is ${response.data.result[0]?.originalDispNum}"
+            state.originalDispNum = response.data.result[0]?.originalDispNum
+            if (logEnable) log.debug "programTitle State is ${response.data.result[0]?.programTitle}"
+            state.programTitle = response.data.result[0]?.programTitle
+        }
+        if (responsedataerror != null){
+            sendEvent(name: "CurrentInput", value: "null", isStateChange: true)
+        }
+
   }
     if (response.data?.id == 999) {
   	//Set the Global value of state.currentinput
@@ -464,10 +503,72 @@ def getCurrentSource(){
 }
 
 def Reboot(){
-            if (logEnable) log.debug "Reboot Pressed"
-        if (logEnable) log.debug "Executing 'Reboot' "
-    def lib = "/sony/avContent"
+    if (logEnable) log.debug "Reboot Pressed"
+    if (logEnable) log.debug "Executing 'Reboot' "
+    def lib = "/sony/system"
     def json = "{\"method\":\"requestReboot\",\"id\":10,\"params\": [],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def TerminateApps(){
+    if (logEnable) log.debug "Terminate Apps Pressed"
+    if (logEnable) log.debug "Executing 'TerminateApps' "
+    def lib = "/sony/appControl"
+    def json = "{\"method\":\"terminateApps\",\"id\":55,\"params\":[],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def InputSelect(def inputname){
+    if (logEnable) log.debug "InputSelect Pressed with ${inputname}"
+def input = null
+    if (inputname == "HDMI1") { input = "extInput:hdmi?port=1"}
+    if (inputname == "HDMI2") { input = "extInput:hdmi?port=2"}
+    if (inputname == "HDMI3") { input = "extInput:hdmi?port=3"}
+    if (inputname == "HDMI4") { input = "extInput:hdmi?port=4"}
+    SetInput(input)
+
+}
+
+def SetInput(input){
+    if (logEnable) log.debug "Executing 'SetInput' "
+    def lib = "/sony/avContent"
+    def json = "{\"method\":\"setPlayContent\",\"id\":101,\"params\":[{\"uri\":\"${input}\"}],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def LaunchApp(def appname){
+    if (logEnable) log.debug "LaunchApp Pressed with ${appname}"
+def app = null
+    if (appname == "YouTube") { app = "com.sony.dtv.com.google.android.youtube.tv.com.google.android.apps.youtube.tv.activity.ShellActivity"}
+    if (appname == "TV") { app = "com.sony.dtv.com.sony.dtv.tvx.com.sony.dtv.tvx.MainActivity"}
+    if (appname == "Program Guide") { app = "com.sony.dtv.com.sony.dtv.tvxlauncher.programguide.com.sony.dtv.tvxlauncher.programguide.MainActivity"}
+    if (appname == "Hulu") { app = "com.sony.dtv.com.hulu.livingroomplus.com.hulu.livingroomplus.WKFactivity"}
+    if (appname == "Pluto TV") { app = "com.sony.dtv.tv.pluto.android.tv.pluto.android.EntryPoint"}
+    if (appname == "Prime Video") { app = "com.sony.dtv.com.amazon.amazonvideo.livingroom.com.amazon.ignition.IgnitionActivity"}
+    if (appname == "Netflix") { app = "com.sony.dtv.com.netflix.ninja.com.netflix.ninja.MainActivity"}
+    if (appname == "tinyCam PRO") { app = "ecom.sony.dtv.com.alexvas.dvr.pro.com.alexvas.dvr.activity.TvMainActivity"}
+    if (appname == "Disney+") { app = "com.sony.dtv.com.disney.disneyplus.com.bamtechmedia.dominguez.main.MainActivity"}
+    if (appname == "ESPN") { app = "com.sony.dtv.com.espn.score_center.com.espn.androidtv.ui.LoadingActivity"}
+    if (appname == "Plex") { app = "com.sony.dtv.com.plexapp.android.com.plexapp.plex.activities.SplashActivity"}
+    if (appname == "Sling TV") { app = "com.sony.dtv.com.sling.com.movenetworks.StartupActivity"}
+    if (appname == "Spotify") { app = "com.sony.dtv.com.spotify.tv.android.com.spotify.tv.android.SpotifyTVActivity"}
+
+    setActiveApp(app)
+}
+
+def setActiveApp(app){
+    if (logEnable) log.debug "Executing 'setActiveApp' with ${app} "
+    def lib = "/sony/appControl"
+    def json = "{\"method\":\"setActiveApp\",\"id\":601,\"params\":[{\"uri\":\"${app}\"}],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+
+}
+
+def SendURL(def url){
+    def urlpath = url
+    if (logEnable) log.debug "Executing 'setURL' "
+    def lib = "/sony/appControl"
+    def json = "{\"method\":\"setActiveApp\",\"id\":601,\"params\":[{\"uri\":\"localapp://webappruntime?url=${urlpath}\"}],\"version\":\"1.0\"}"
     postAPICall(lib,json)
 }
 
