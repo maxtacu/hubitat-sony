@@ -404,7 +404,7 @@ def getPowerStatus() {
 def setPowerStatusOn() {
     if (logEnable) log.debug "Executing 'setPowerStatusOn' "
     def lib = "/sony/system"
-    def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.0\",\"params\":[{\"status\":\"true\"}],\"id\":3}"
+    def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.0\",\"params\":[{\"status\":true}],\"id\":3}"
     postAPICall(lib,json)
     pauseExecution(2000)
     getPowerStatus()
@@ -413,7 +413,7 @@ def setPowerStatusOn() {
 def setPowerStatusOff() {
     if (logEnable) log.debug "Executing 'setPowerStatusOff' "
     def lib = "/sony/system"
-    def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.0\",\"params\":[{\"status\":\"false\"}],\"id\":4}"
+    def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.0\",\"params\":[{\"status\":false}],\"id\":4}"
     postAPICall(lib,json)
     pauseExecution(2000)
     getPowerStatus()

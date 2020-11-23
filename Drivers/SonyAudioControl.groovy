@@ -36,8 +36,7 @@
 				"","clearAudio","movie","music","sports","game","standard","off"] ] ]
     //Enable below command if you want to return json data for debugging. This might be used to see which methods your device supports or to test a post call.            
     command "sendDebugString",[[name:"libpath",type:"STRING", description:"path to lib", constraints:["STRING"]],
-    [name:"jsonmsg",type:"JSON_OBJECT", description:"json msg for post", constraints:["JSON_OBJECT"]],
-    [name:"parsestring",type:"STRING", description:"check parse", constraints:["STRING"]]
+    [name:"jsonmsg",type:"JSON_OBJECT", description:"json msg for post", constraints:["JSON_OBJECT"]]
     ]
     command "keyPress", [[name:"Key Press Action", type: "ENUM", constraints: [
                 "Enter",
