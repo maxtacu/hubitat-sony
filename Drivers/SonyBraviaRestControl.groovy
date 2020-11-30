@@ -2,13 +2,9 @@
  *  Sony Audio Control
  *  Hubitat Integration
  *  Utilized the below URL for commands and values
- *  https://developer.sony.com/develop/audio-control-api/api-references/api-overview-2
- *  Driver was devleloped and tested for a sony CT800, certain commands may not work for other items
- *  STR-DN1080, SRS-ZR5, HT-Z9F, HT-MT500, HT-ST5000 are the listed devices, but almost any sony networked audio device should work with little modification
- *  Device capability matrix is in the URL below.
- *  https://developer.sony.com/develop/audio-control-api/api-references/device-uri
- *  There are many hidden methods that are not on sony's audio API documents, some are borrowed on from their TV API URL below
  *  https://pro-bravia.sony.net/develop/integrate/rest-api/spec/index.html
+ *  Driver was devleloped and tested for a sony XBR-65X850F, certain commands may not work for other items
+ *  This driver should work for most Sony Bravia TV's, but apps, button commands may differ between different devices
  *  Certain products may need to have their method versions updated depending on the specfic product (a newer soundbar may have 1.1 instead of 1.0) 
  *  IMPORT URL: https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/Sony Bravia Rest Control.groovy
  *
@@ -23,30 +19,29 @@
  *
  */
  metadata {
-  definition (name: "Sony Bravia Rest Control Beta", namespace: "ajones", author: "Alex Jones") {
+  definition (name: "Sony Bravia Rest Control", namespace: "ajones", author: "Alex Jones") {
     capability "Switch"
     capability "Refresh"
     capability "Polling"
     capability "AudioVolume"
-    //capability "MusicPlayer"
     command "Reboot"
     command "TerminateApps"
     command "SendURL", ["string"]
   command "LaunchApp", [[name:"ChooseApp", type: "ENUM", constraints: [
 				"",
-                "YouTube",
-                "TV",
-                "Program Guide",
-                "Hulu",
-                "Pluto TV",
-                "Prime Video",
-                "Netflix",
-                "tinyCam PRO",
                 "Disney+",
                 "ESPN",
+                "Hulu",
+                "Netflix",
                 "Plex",
+                "Pluto TV",
+                "Prime Video",
+                "Program Guide",
                 "Sling TV",
-                "Spotify"
+                "Spotify",
+                "tinyCam PRO",
+                "TV",
+                "YouTube"
                 ] ] ]
     command "InputSelect", [[name:"Choose Input", type: "ENUM", constraints: [
 				"",
@@ -61,7 +56,6 @@
     ]
     command "keyPress", [[name:"Key Press Action", type: "ENUM", constraints: [
                 "",
-                "Enter",
                 "ChannelUp",
                 "ChannelDown",
                 "VolumeUp",
@@ -100,6 +94,7 @@
                 "YouTube"
                 ] ] ]
     attribute "CurrentInput", "string"
+    attribute "Channel", "string"
     }
 
 preferences {
@@ -108,7 +103,7 @@ preferences {
         input("PSK", "string", title:"PSK Passphrase", defaultValue:"", required:false, displayDuringSetup:true)
         input("WOLEnable", "bool", title:"Send WOL Packet when off", defaultValue:false)
         input("refreshInterval", "enum", title: "Refresh Interval in minutes", defaultValue: "10", required:true, displayDuringSetup:true, options: ["1","5","10","15","30"])
-        input("logEnable", "bool", title: "Enable debug logging", defaultValue: true)
+        input("logEnable", "bool", title: "Enable debug logging for 1 hour", defaultValue: true)
     }
  }
 
@@ -279,20 +274,6 @@ private jsonreturnaction(response){
     if (logEnable) log.debug "dns State is ${response.data.result[0][0]?.dns}"
     state.dns = response.data.result[0][0]?.dns
   }
-  if (response.data?.id == 61) {
-  	//Set the Global value of state.nightmode
-    if (logEnable) log.debug "nightmode is ${response.data.result[0][0]?.currentValue}"
-    def nightmode = response.data.result[0][0]?.currentValue
-    sendEvent(name: "NightMode", value: nightmode, isStateChange: true)
-    if (logEnable) log.debug "NightMode event is '${nightmode}'"
-  }
-    if (response.data?.id == 65) {
-  	//Set the Global value of state.nightmode
-    if (logEnable) log.debug "soundfield is ${response.data.result[0][0]?.currentValue}"
-    def soundfield = response.data.result[0][0]?.currentValue
-    sendEvent(name: "SoundField", value: soundfield, isStateChange: true)
-    if (logEnable) log.debug "SoundField event is '${soundfield}'"
-  }
     if (response.data?.id == 70) {
   	//Set the Global value of state.currentinput
         if (responsedataerror == null){
@@ -305,14 +286,16 @@ private jsonreturnaction(response){
             if (logEnable) log.debug "title State is ${response.data.result[0]?.title}"
             state.title = response.data.result[0]?.title
             if (logEnable) log.debug "dispNum State is ${response.data.result[0]?.dispNum}"
-            state.dispNum = response.data.result[0]?.dispNum
+            def dispNum = response.data.result[0]?.dispNum
+            sendEvent(name: "Channel", value: dispNum, isStateChange: true)
             if (logEnable) log.debug "originalDispNum State is ${response.data.result[0]?.originalDispNum}"
             state.originalDispNum = response.data.result[0]?.originalDispNum
             if (logEnable) log.debug "programTitle State is ${response.data.result[0]?.programTitle}"
             state.programTitle = response.data.result[0]?.programTitle
         }
         if (responsedataerror != null){
-            sendEvent(name: "CurrentInput", value: "null", isStateChange: true)
+            sendEvent(name: "CurrentInput", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "Channel", value: "SmartMode", isStateChange: true)
         }
 
   }
@@ -388,8 +371,6 @@ def unmute(){
     if (logEnable) log.debug "unmute pushed"
     setUnMute()
 }
-
-
 
 
 //API Commands------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -516,6 +497,8 @@ def TerminateApps(){
     def lib = "/sony/appControl"
     def json = "{\"method\":\"terminateApps\",\"id\":55,\"params\":[],\"version\":\"1.0\"}"
     postAPICall(lib,json)
+    pauseExecution(2000)
+    refresh()
 }
 
 def InputSelect(def inputname){
