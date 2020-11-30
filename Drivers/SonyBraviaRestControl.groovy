@@ -6,7 +6,7 @@
  *  Driver was devleloped and tested for a sony XBR-65X850F, certain commands may not work for other items
  *  This driver should work for most Sony Bravia TV's, but apps, button commands may differ between different devices
  *  Certain products may need to have their method versions updated depending on the specfic product (a newer soundbar may have 1.1 instead of 1.0) 
- *  IMPORT URL: https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/Sony Bravia Rest Control.groovy
+ *  IMPORT URL: https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyBraviaRestControl.groovy
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
