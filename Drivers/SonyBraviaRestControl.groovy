@@ -381,7 +381,7 @@ def poll() {
 def refresh() {
     if (logEnable) log.debug "Refreshing"
     getPowerStatus()
-    if (state.devicepower == "On"){
+    if (state.devicepower == "on"){
         getSoundVolume()
         getMuteStatus()
         getCurrentSource()
