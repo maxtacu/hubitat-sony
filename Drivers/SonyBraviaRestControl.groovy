@@ -24,6 +24,7 @@
     capability "Refresh"
     capability "Polling"
     capability "AudioVolume"
+    command "getInfo"
     command "Reboot"
     command "TerminateApps"
     command "SendURL", ["string"]
@@ -95,6 +96,14 @@
                 ] ] ]
     attribute "CurrentInput", "string"
     attribute "Channel", "string"
+    attribute "SpeakerOutput", "string"
+    attribute "PowerSave", "string"
+    attribute "Source", "string"
+    attribute  "Title", "string"
+    attribute "OriginalDisplayNumber", "string"
+    attribute "ProgramTitle", "string"
+    attribute "WakeOnLanEnabled", "string"
+
     }
 
 preferences {
@@ -124,6 +133,7 @@ preferences {
     } else {
         "runEvery${minutes}Minutes"(refresh)
     }
+    runEvery30Minutes(getInfo)
 }
 
 //Below function will take place anytime the save button is pressed on the driver page
@@ -140,6 +150,7 @@ def updated() {
     state.updated = now()
     if (logEnable) runIn(3600,logsOff)
     refresh()
+    getInfo()
 }
 
 //Below function will disable debugs logs after 3600 seconds called in the updated function
@@ -200,19 +211,20 @@ private postAPICall(lib,json) {
 //Below function will take action on the response message from the API Post Call
 private jsonreturnaction(response){
     if (logEnable) log.debug "ID is ${response.data.id}"
-    if (logEnable) log.debug "raw data result is ${response.data.result}"
+    if (logEnable) log.info "raw data result is ${response.data.result}"
 
     String responsedataerror = response.data.error
-    if (logEnable) log.debug "dataerrorstring is ${responsedataerror}"
+    if (logEnable) log.warn "dataerrorstring is ${responsedataerror}"
 
     if (responsedataerror != null){
-    log.warn "data error is ${response.data.error}"
+    if (logEnable) log.warn "data error is ${response.data.error}"
     }
 
   if (response.data?.id == 2) {
   	//Set the Global value of state.device on or off
     if (logEnable) log.debug "Status is ${response.data.result[0]?.status}"
     def devicestate = (response.data.result[0]?.status == "active") ? "on" : "off"
+    state.devicepower = devicestate
     sendEvent(name: "switch", value: devicestate, isStateChange: true)
     if (logEnable) log.debug "DeviceState Event is '${devicestate}'"
   }
@@ -224,20 +236,32 @@ private jsonreturnaction(response){
        sendEvent(name: "volume", value: devicevolume, isStateChange: true)
     if (logEnable) log.debug "DeviceVolume Event is '${devicevolume}'"
   }
-
-  if (response.data?.id == 55) {
-  	//Set the Global value of state.sublevel
-    if (logEnable) log.debug "SubLevel is ${response.data.result[0][0]?.currentValue}"
-    def sublevel = response.data.result[0][0]?.currentValue
-    sendEvent(name: "SubLevel", value: sublevel, isStateChange: true)
-    if (logEnable) log.debug "Sublevel Event is '${sublevel}'"
-  }
   if (response.data?.id == 40) {
   	//Set the Global value of state.devicemute
     if (logEnable) log.debug "Mute is ${response.data.result[0][0]?.mute}"
     def devicemute = (response.data.result[0][0]?.mute == true) ? "on" : "off"
     sendEvent(name: "mute", value: devicemute, isStateChange: true)
     if (logEnable) log.debug "Devicemute State is '${devicemute}'"
+  }
+  if (response.data?.id == 73) {
+  	//Set the Global value of speakeroutput
+    if (logEnable) log.debug "Speaker output is ${response.data.result[0][0]?.currentValue}"
+    def speakermode = response.data.result[0][0]?.currentValue
+    sendEvent(name: "SpeakerOutput", value: speakermode, isStateChange: true)
+    if (logEnable) log.debug "speakermode State is '${speakermode}'"
+  }
+  if (response.data?.id == 89) {
+  	//Set the Global value of powersave
+    if (logEnable) log.debug "Powersave Mode is ${response.data.result[0]?.mode}"
+    def powersavemode = response.data.result[0]?.mode
+    sendEvent(name: "PowerSave", value: powersavemode, isStateChange: true)
+    if (logEnable) log.debug "Powersavemode is '${powersavemode}'"
+  }
+  if (response.data?.id == 86) {
+  	//Set the Global value of powersave
+    if (logEnable) log.debug "WOL Mode is ${response.data.result[0]?.enabled}"
+    def wolmode = response.data.result[0]?.enabled
+    sendEvent(name: "WakeOnLanEnabled", value: wolmode, isStateChange: true)
   }
   if (response.data?.id == 99) {
   	//Set the Global value of systeminfo
@@ -277,25 +301,43 @@ private jsonreturnaction(response){
     if (response.data?.id == 70) {
   	//Set the Global value of state.currentinput
         if (responsedataerror == null){
+
             if (logEnable) log.debug "currentinput is ${response.data.result[0]?.uri}"
             def currentinput = response.data.result[0]?.uri
             sendEvent(name: "CurrentInput", value: currentinput, isStateChange: true)
-            if (logEnable) log.debug "CurrentInput State is '${currentinput}'"
-            if (logEnable) log.debug "source State is ${response.data.result[0]?.source}"
-            state.source = response.data.result[0]?.source
+
+            if (logEnable) log.debug "source is ${response.data.result[0]?.source}"
+            def inputsource = response.data.result[0]?.source
+            sendEvent(name: "Source", value: inputsource, isStateChange: true)
+
             if (logEnable) log.debug "title State is ${response.data.result[0]?.title}"
-            state.title = response.data.result[0]?.title
+            //state.title = response.data.result[0]?.title
+            def inputtitle = response.data.result[0]?.title
+            sendEvent(name: "Title", value: inputtitle, isStateChange: true)
+
             if (logEnable) log.debug "dispNum State is ${response.data.result[0]?.dispNum}"
             def dispNum = response.data.result[0]?.dispNum
             sendEvent(name: "Channel", value: dispNum, isStateChange: true)
+
             if (logEnable) log.debug "originalDispNum State is ${response.data.result[0]?.originalDispNum}"
-            state.originalDispNum = response.data.result[0]?.originalDispNum
+            //state.originalDispNum = response.data.result[0]?.originalDispNum
+            def origdisplaynum = response.data.result[0]?.originalDispNum
+            sendEvent(name: "OriginalDisplayNumber", value: origdisplaynum, isStateChange: true)
+
             if (logEnable) log.debug "programTitle State is ${response.data.result[0]?.programTitle}"
-            state.programTitle = response.data.result[0]?.programTitle
+            //state.programTitle = response.data.result[0]?.programTitle
+            def progtitle = response.data.result[0]?.programTitle
+            sendEvent(name: "ProgramTitle", value: progtitle, isStateChange: true)
+
         }
         if (responsedataerror != null){
             sendEvent(name: "CurrentInput", value: "SmartMode", isStateChange: true)
             sendEvent(name: "Channel", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "Source", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "Title", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "OriginalDisplayNumber", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "ProgramTitle", value: "SmartMode", isStateChange: true)
+
         }
 
   }
@@ -314,6 +356,8 @@ def getInfo(){
     getSystemInfo()
     getInterfaceInfo()
     getEthernetSettings()
+    getPowerSaveMode()
+    getWOLMode()
 
 }
 
@@ -337,10 +381,12 @@ def poll() {
 def refresh() {
     if (logEnable) log.debug "Refreshing"
     getPowerStatus()
-    getSoundVolume()
-    getMuteStatus()
-    getInfo()
-    getCurrentSource()
+    if (state.devicepower == "On"){
+        getSoundVolume()
+        getMuteStatus()
+        getCurrentSource()
+        getSoundSettings()
+}
 }
 
 
@@ -410,7 +456,7 @@ if (logEnable) log.debug "Executing 'getSoundVolume' "
 def setSoundVolume(def Level) {
     if (logEnable) log.debug "Executing 'setSoundVolume' with ${level} "
     def lib = "/sony/audio"
-    def json = "{\"method\":\"setAudioVolume\",\"id\":51,\"params\":[{\"volume\":\"${Level}\",\"target\":\"speaker\"}],\"version\":\"1.2\"}"
+    def json = "{\"method\":\"setAudioVolume\",\"id\":51,\"params\":[{\"volume\":\"${Level}\",\"target\":\"\",\"ui\":\"on\"}],\"version\":\"1.2\"}"
     postAPICall(lib,json)
     getSoundVolume()
 }
@@ -554,6 +600,29 @@ def SendURL(def url){
     def json = "{\"method\":\"setActiveApp\",\"id\":601,\"params\":[{\"uri\":\"localapp://webappruntime?url=${urlpath}\"}],\"version\":\"1.0\"}"
     postAPICall(lib,json)
 }
+
+def getSoundSettings(){
+    if (logEnable) log.debug "Executing 'getSoundSettings' "
+    def lib = "/sony/audio"
+    def json = "{\"method\":\"getSoundSettings\",\"id\":73,\"params\":[{\"target\":\"\"}],\"version\":\"1.1\"}"
+    postAPICall(lib,json)
+}
+
+def getPowerSaveMode(){
+    if (logEnable) log.debug "Executing 'getPowerSaveMode' "
+    def lib = "/sony/system"
+    def json = "{\"method\":\"getPowerSavingMode\",\"id\":89,\"params\":[],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def getWOLMode(){
+    if (logEnable) log.debug "Executing 'getWOLMode' "
+     def lib = "/sony/system"
+    def json = "{\"method\":\"getWolMode\",\"id\":86,\"params\":[],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+
 
 //This will convert the selected key to the IRCC Mode
 def keyPress(key) {
@@ -734,4 +803,11 @@ private RemoteIRCC(key,remotecommand){
      )
      sendHubCommand(sonycmd)
      if (logEnable) log.debug( "hubAction = ${sonycmd}" )
+}
+
+def parse(description) {
+    //adding to prevent error during button command
+  if (logEnable) log.debug ("Parsing '${description}'")
+  def msg = parseLanMessage(description)
+	if (logEnable) log.debug "${msg}"
 }
