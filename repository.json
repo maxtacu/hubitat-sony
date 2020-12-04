@@ -1,0 +1,19 @@
+{
+  "author": "Alex Jones",
+  "gitHubUrl": "https://github.com/jonesalexr",
+  "payPalUrl": "",
+  "packages": [
+    {
+      "name": "Sony Bravia TV Rest Control",
+      "category": "Integrations",
+      "location": "https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyBravia/packageManifest.json",
+      "description": "Rest Control API for Sony Bravia TV devices"
+    },
+    {
+      "name": "Sony Bravia TV Rest Control",
+      "category": "Integrations",
+      "location": "https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyAudio/packageManifest.json",
+      "description": "Rest Control API for Sony Bravia TV devices"
+    },
+  ]
+}

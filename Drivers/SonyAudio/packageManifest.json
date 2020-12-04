@@ -1,0 +1,19 @@
+{
+    "packageName": "Sony Audio Control",
+    "author": "Alex Jones",
+    "version": "1.0.6",
+    "minimumHEVersion": "2.1.8.117",
+    "communityLink": "https://community.hubitat.com/t/release-sony-audio-control-driver/55740",
+    "releaseNotes": "STR-DN1080, SRS-ZR5, HT-Z9F, HT-MT500, HT-ST5000 are the listed devices, but almost any sony networked audio device should work with little modification",
+    "dateReleased": "2020-11-15",
+    "drivers": [
+      {
+        "id": "1b014524-784c-4b50-85b2-4ac722ca4be2",
+        "name": "Sony Audio Control",
+        "namespace": "ajones",
+        "location": "https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyAudio/SonyAudioControl.groovy",
+        "required": true
+      }
+    ]
+  }
+  

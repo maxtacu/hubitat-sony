@@ -1,16 +1,13 @@
 /**
- *  Sony Audio Control
+ *  Sony Bravia TV Rest Control
+ *  Version=1.0.6
  *  Hubitat Integration
  *  Utilized the below URL for commands and values
- *  https://developer.sony.com/develop/audio-control-api/api-references/api-overview-2
- *  Driver was devleloped and tested for a sony CT800, certain commands may not work for other items
- *  STR-DN1080, SRS-ZR5, HT-Z9F, HT-MT500, HT-ST5000 are the listed devices, but almost any sony networked audio device should work with little modification
- *  Device capability matrix is in the URL below.
- *  https://developer.sony.com/develop/audio-control-api/api-references/device-uri
- *  There are many hidden methods that are not on sony's audio API documents, some are borrowed on from their TV API URL below
  *  https://pro-bravia.sony.net/develop/integrate/rest-api/spec/index.html
+ *  Driver was devleloped and tested for a sony XBR-65X850F, certain commands may not work for other items
+ *  This driver should work for most Sony Bravia TV's, but apps, button commands may differ between different devices
  *  Certain products may need to have their method versions updated depending on the specfic product (a newer soundbar may have 1.1 instead of 1.0) 
- *  IMPORT URL: https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyAudioControl.groovy
+ *  IMPORT URL: https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyBravia/SonyBraviaTVRestControl.groovy
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -23,23 +20,44 @@
  *
  */
  metadata {
-  definition (name: "Sony Audio Control Beta", namespace: "ajones", author: "Alex Jones") {
+  definition (name: "Sony Bravia TV Rest Control", namespace: "ajones", author: "Alex Jones") {
     capability "Switch"
     capability "Refresh"
     capability "Polling"
     capability "AudioVolume"
-    //capability "MusicPlayer"
-    command "setSubLevel", ["number"]
-    command "setNightModeOn"
-    command "setNightModeOff"
-    command "setSoundField", [[name:"Choose Soundfield", type: "ENUM", constraints: [
-				"","clearAudio","movie","music","sports","game","standard","off"] ] ]
+    command "getInfo"
+    command "Reboot"
+    command "TerminateApps"
+    command "SendURL", ["string"]
+  command "LaunchApp", [[name:"ChooseApp", type: "ENUM", constraints: [
+				"",
+                "Disney+",
+                "ESPN",
+                "Hulu",
+                "Netflix",
+                "Plex",
+                "Pluto TV",
+                "Prime Video",
+                "Program Guide",
+                "Sling TV",
+                "Spotify",
+                "tinyCam PRO",
+                "TV",
+                "YouTube"
+                ] ] ]
+    command "InputSelect", [[name:"Choose Input", type: "ENUM", constraints: [
+				"",
+                "HDMI1",
+                "HDMI2",
+                "HDMI3",
+                "HDMI4"
+                ] ] ]
     //Enable below command if you want to return json data for debugging. This might be used to see which methods your device supports or to test a post call.            
     command "sendDebugString",[[name:"libpath",type:"STRING", description:"path to lib", constraints:["STRING"]],
     [name:"jsonmsg",type:"JSON_OBJECT", description:"json msg for post", constraints:["JSON_OBJECT"]]
     ]
     command "keyPress", [[name:"Key Press Action", type: "ENUM", constraints: [
-                "Enter",
+                "",
                 "ChannelUp",
                 "ChannelDown",
                 "VolumeUp",
@@ -77,19 +95,25 @@
                 "MuteOff",
                 "YouTube"
                 ] ] ]
-    attribute "SubLevel", "number"
-    attribute "NightMode", "string"
-    attribute "SoundField", "string"
     attribute "CurrentInput", "string"
+    attribute "Channel", "string"
+    attribute "SpeakerOutput", "string"
+    attribute "PowerSave", "string"
+    attribute "Source", "string"
+    attribute  "Title", "string"
+    attribute "OriginalDisplayNumber", "string"
+    attribute "ProgramTitle", "string"
+    attribute "WakeOnLanEnabled", "string"
+
     }
 
 preferences {
         input("ipAddress", "string", title:"Sony IP Address", required:true, displayDuringSetup:true)
-        input("ipPort", "string", title:"Sony Port (default: 100000)", defaultValue:10000, required:true, displayDuringSetup:true)
+        input("ipPort", "string", title:"Sony Port (default: 80)", defaultValue:80, required:true, displayDuringSetup:true)
         input("PSK", "string", title:"PSK Passphrase", defaultValue:"", required:false, displayDuringSetup:true)
         input("WOLEnable", "bool", title:"Send WOL Packet when off", defaultValue:false)
         input("refreshInterval", "enum", title: "Refresh Interval in minutes", defaultValue: "10", required:true, displayDuringSetup:true, options: ["1","5","10","15","30"])
-        input("logEnable", "bool", title: "Enable debug logging", defaultValue: true)
+        input("logEnable", "bool", title: "Enable debug logging for 1 hour", defaultValue: true)
     }
  }
 
@@ -110,6 +134,7 @@ preferences {
     } else {
         "runEvery${minutes}Minutes"(refresh)
     }
+    runEvery30Minutes(getInfo)
 }
 
 //Below function will take place anytime the save button is pressed on the driver page
@@ -126,6 +151,7 @@ def updated() {
     state.updated = now()
     if (logEnable) runIn(3600,logsOff)
     refresh()
+    getInfo()
 }
 
 //Below function will disable debugs logs after 3600 seconds called in the updated function
@@ -186,19 +212,20 @@ private postAPICall(lib,json) {
 //Below function will take action on the response message from the API Post Call
 private jsonreturnaction(response){
     if (logEnable) log.debug "ID is ${response.data.id}"
-    if (logEnable) log.debug "raw data result is ${response.data.result}"
+    if (logEnable) log.info "raw data result is ${response.data.result}"
 
     String responsedataerror = response.data.error
-    if (logEnable) log.debug "dataerrorstring is ${responsedataerror}"
+    if (logEnable) log.warn "dataerrorstring is ${responsedataerror}"
 
     if (responsedataerror != null){
-    log.warn "data error is ${response.data.error}"
+    if (logEnable) log.warn "data error is ${response.data.error}"
     }
 
   if (response.data?.id == 2) {
   	//Set the Global value of state.device on or off
     if (logEnable) log.debug "Status is ${response.data.result[0]?.status}"
     def devicestate = (response.data.result[0]?.status == "active") ? "on" : "off"
+    state.devicepower = devicestate
     sendEvent(name: "switch", value: devicestate, isStateChange: true)
     if (logEnable) log.debug "DeviceState Event is '${devicestate}'"
   }
@@ -210,31 +237,41 @@ private jsonreturnaction(response){
        sendEvent(name: "volume", value: devicevolume, isStateChange: true)
     if (logEnable) log.debug "DeviceVolume Event is '${devicevolume}'"
   }
-
-  if (response.data?.id == 55) {
-  	//Set the Global value of state.sublevel
-    if (logEnable) log.debug "SubLevel is ${response.data.result[0][0]?.currentValue}"
-    def sublevel = response.data.result[0][0]?.currentValue
-    sendEvent(name: "SubLevel", value: sublevel, isStateChange: true)
-    if (logEnable) log.debug "Sublevel Event is '${sublevel}'"
-  }
   if (response.data?.id == 40) {
   	//Set the Global value of state.devicemute
     if (logEnable) log.debug "Mute is ${response.data.result[0][0]?.mute}"
-    def devicemute = response.data.result[0][0]?.mute
+    def devicemute = (response.data.result[0][0]?.mute == true) ? "on" : "off"
     sendEvent(name: "mute", value: devicemute, isStateChange: true)
     if (logEnable) log.debug "Devicemute State is '${devicemute}'"
   }
+  if (response.data?.id == 73) {
+  	//Set the Global value of speakeroutput
+    if (logEnable) log.debug "Speaker output is ${response.data.result[0][0]?.currentValue}"
+    def speakermode = response.data.result[0][0]?.currentValue
+    sendEvent(name: "SpeakerOutput", value: speakermode, isStateChange: true)
+    if (logEnable) log.debug "speakermode State is '${speakermode}'"
+  }
+  if (response.data?.id == 89) {
+  	//Set the Global value of powersave
+    if (logEnable) log.debug "Powersave Mode is ${response.data.result[0]?.mode}"
+    def powersavemode = response.data.result[0]?.mode
+    sendEvent(name: "PowerSave", value: powersavemode, isStateChange: true)
+    if (logEnable) log.debug "Powersavemode is '${powersavemode}'"
+  }
+  if (response.data?.id == 86) {
+  	//Set the Global value of powersave
+    if (logEnable) log.debug "WOL Mode is ${response.data.result[0]?.enabled}"
+    def wolmode = response.data.result[0]?.enabled
+    sendEvent(name: "WakeOnLanEnabled", value: wolmode, isStateChange: true)
+  }
   if (response.data?.id == 99) {
   	//Set the Global value of systeminfo
-    if (logEnable) log.debug "bdAddr State is ${response.data.result[0]?.bdAddr}"
-    state.bdAddr = response.data.result[0]?.bdAddr
     if (logEnable) log.debug "macAddr State is ${response.data.result[0]?.macAddr}"
     state.macAddr = response.data.result[0]?.macAddr
-    if (logEnable) log.debug "version is State ${response.data.result[0]?.version}"
-    state.version = response.data.result[0]?.version
-    if (logEnable) log.debug "wirelessMacAddr State is ${response.data.result[0]?.wirelessMacAddr}"
-    state.wirelessMacAddr = response.data.result[0]?.wirelessMacAddr
+    if (logEnable) log.debug "generation is State ${response.data.result[0]?.generation}"
+    state.generation = response.data.result[0]?.generation
+    if (logEnable) log.debug "serial State is ${response.data.result[0]?.serial}"
+    state.serial = response.data.result[0]?.serial
   }
   if (response.data?.id == 98) {
   	//Set the Global value of interfaceinfo
@@ -250,31 +287,60 @@ private jsonreturnaction(response){
     state.serverName = response.data.result[0]?.serverName
   }
   if (response.data?.id == 97) {
-  	//Set the Global value of miscsettings
-    if (logEnable) log.debug "devicename State is ${response.data.result[0]?.currentValue}"
-    state.devicename = response.data.result[0]?.currentValue
-  }
-  if (response.data?.id == 61) {
-  	//Set the Global value of state.nightmode
-    if (logEnable) log.debug "nightmode is ${response.data.result[0][0]?.currentValue}"
-    def nightmode = response.data.result[0][0]?.currentValue
-    sendEvent(name: "NightMode", value: nightmode, isStateChange: true)
-    if (logEnable) log.debug "NightMode event is '${nightmode}'"
-  }
-    if (response.data?.id == 65) {
-  	//Set the Global value of state.nightmode
-    if (logEnable) log.debug "soundfield is ${response.data.result[0][0]?.currentValue}"
-    def soundfield = response.data.result[0][0]?.currentValue
-    sendEvent(name: "SoundField", value: soundfield, isStateChange: true)
-    if (logEnable) log.debug "SoundField event is '${soundfield}'"
+  	//Set the Global value of EthernetSettings
+    if (logEnable) log.debug "hwAddr State is ${response.data.result[0][0]?.hwAddr}"
+    state.hwAddr = response.data.result[0][0]?.hwAddr
+    if (logEnable) log.debug "ipAddrV4 State is ${response.data.result[0][0]?.ipAddrV4}"
+    state.ipAddrV4 = response.data.result[0][0]?.ipAddrV4
+    if (logEnable) log.debug "ipAddrV6 State is ${response.data.result[0][0]?.ipAddrV6}"
+    state.ipAddrV6 = response.data.result[0][0]?.ipAddrV6
+    if (logEnable) log.debug "gateway State is ${response.data.result[0][0]?.gateway}"
+    state.gateway = response.data.result[0][0]?.gateway
+    if (logEnable) log.debug "dns State is ${response.data.result[0][0]?.dns}"
+    state.dns = response.data.result[0][0]?.dns
   }
     if (response.data?.id == 70) {
   	//Set the Global value of state.currentinput
-    if (logEnable) log.debug "currentinput is ${response.data.result[0][0]?.uri}"
-    def currentinput = response.data.result[0][0]?.uri
-    sendEvent(name: "CurrentInput", value: currentinput, isStateChange: true)
-    if (logEnable) log.debug "CurrentInput State is '${currentinput}'"
-    
+        if (responsedataerror == null){
+
+            if (logEnable) log.debug "currentinput is ${response.data.result[0]?.uri}"
+            def currentinput = response.data.result[0]?.uri
+            sendEvent(name: "CurrentInput", value: currentinput, isStateChange: true)
+
+            if (logEnable) log.debug "source is ${response.data.result[0]?.source}"
+            def inputsource = response.data.result[0]?.source
+            sendEvent(name: "Source", value: inputsource, isStateChange: true)
+
+            if (logEnable) log.debug "title State is ${response.data.result[0]?.title}"
+            //state.title = response.data.result[0]?.title
+            def inputtitle = response.data.result[0]?.title
+            sendEvent(name: "Title", value: inputtitle, isStateChange: true)
+
+            if (logEnable) log.debug "dispNum State is ${response.data.result[0]?.dispNum}"
+            def dispNum = response.data.result[0]?.dispNum
+            sendEvent(name: "Channel", value: dispNum, isStateChange: true)
+
+            if (logEnable) log.debug "originalDispNum State is ${response.data.result[0]?.originalDispNum}"
+            //state.originalDispNum = response.data.result[0]?.originalDispNum
+            def origdisplaynum = response.data.result[0]?.originalDispNum
+            sendEvent(name: "OriginalDisplayNumber", value: origdisplaynum, isStateChange: true)
+
+            if (logEnable) log.debug "programTitle State is ${response.data.result[0]?.programTitle}"
+            //state.programTitle = response.data.result[0]?.programTitle
+            def progtitle = response.data.result[0]?.programTitle
+            sendEvent(name: "ProgramTitle", value: progtitle, isStateChange: true)
+
+        }
+        if (responsedataerror != null){
+            sendEvent(name: "CurrentInput", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "Channel", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "Source", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "Title", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "OriginalDisplayNumber", value: "SmartMode", isStateChange: true)
+            sendEvent(name: "ProgramTitle", value: "SmartMode", isStateChange: true)
+
+        }
+
   }
     if (response.data?.id == 999) {
   	//Set the Global value of state.currentinput
@@ -286,6 +352,15 @@ private jsonreturnaction(response){
 
 //Button Commands  ------------------------------------------------------------------------------------------------------------------
 
+def getInfo(){
+    if (logEnable) log.debug "getInfo pushed"
+    getSystemInfo()
+    getInterfaceInfo()
+    getEthernetSettings()
+    getPowerSaveMode()
+    getWOLMode()
+
+}
 
 //Switch Capability+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def on(){
@@ -307,16 +382,12 @@ def poll() {
 def refresh() {
     if (logEnable) log.debug "Refreshing"
     getPowerStatus()
-    getSoundVolume()
-    getSubLevel()
-    getMuteStatus()
-    getSystemInfo()
-    getNightModeStatus()
-    getSoundField()
-    getInterfaceInfo()
-    getDeviceMiscSettings()
-    getPowerSettings()
-    getCurrentSource()
+    if (state.devicepower == "on"){
+        getSoundVolume()
+        getMuteStatus()
+        getCurrentSource()
+        getSoundSettings()
+}
 }
 
 
@@ -348,76 +419,20 @@ def unmute(){
     setUnMute()
 }
 
-def  nextTrack(){
-    //todo
-    if (logEnable) log.debug "nextTrack pushed"
-}
-
-def pause(){
-    //todo
-    if (logEnable) log.debug "pause pushed"
-}
-
-def play(){
-    //todo
-    if (logEnable) log.debug "play pushed"
-}
-
-def playtext(text){
-    //todo
-    if (logEnable) log.debug "nextTrack pushed"
-}
-
-def playTrack(trackuri){
-    //todo
-    if (logEnable) log.debug "nextTrack pushed"
-}
-
-def previousTrack(){
-    //todo
-    if (logEnable) log.debug "nextTrack pushed"
-}
-
-def restoreTrack(trackuri){
-    //todo
-    if (logEnable) log.debug "nextTrack pushed"
-}
-
-def resumeTrack(trackuri){
-    //todo
-    if (logEnable) log.debug "nextTrack pushed"
-}
-
-def setLevel(volumelevel){
-    //todo
-    if (logEnable) log.debug "nextTrack pushed"
-}
-
-def setTrack(trackuri){
-    //todo
-    if (logEnable) log.debug "nextTrack pushed"
-}
-
-def stop(){
-    //todo
-    if (logEnable) log.debug "nextTrack pushed"
-}
-
-
 
 //API Commands------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def getPowerStatus() {
     if (logEnable) log.debug "Executing 'getPowerStatus' "
     def lib = "/sony/system"
-    def json = "{\"id\":2,\"method\":\"getPowerStatus\",\"version\":\"1.1\",\"params\":[]}"
+    def json = "{\"id\":2,\"method\":\"getPowerStatus\",\"version\":\"1.0\",\"params\":[]}"
     postAPICall(lib,json)
 }
 
 def setPowerStatusOn() {
     if (logEnable) log.debug "Executing 'setPowerStatusOn' "
     def lib = "/sony/system"
-    def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"active\"}],\"id\":3}"
+    def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.0\",\"params\":[{\"status\":true}],\"id\":3}"
     postAPICall(lib,json)
     pauseExecution(2000)
     getPowerStatus()
@@ -426,7 +441,7 @@ def setPowerStatusOn() {
 def setPowerStatusOff() {
     if (logEnable) log.debug "Executing 'setPowerStatusOff' "
     def lib = "/sony/system"
-    def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.1\",\"params\":[{\"status\":\"off\"}],\"id\":4}"
+    def json = "{\"method\":\"setPowerStatus\",\"version\":\"1.0\",\"params\":[{\"status\":false}],\"id\":4}"
     postAPICall(lib,json)
     pauseExecution(2000)
     getPowerStatus()
@@ -435,44 +450,29 @@ def setPowerStatusOff() {
 def getSoundVolume() {
 if (logEnable) log.debug "Executing 'getSoundVolume' "
     def lib = "/sony/audio"
-    def json = "{\"method\":\"getVolumeInformation\",\"version\":\"1.1\",\"params\":[{\"output\":\"\"}],\"id\":50}"
+    def json = "{\"method\":\"getVolumeInformation\",\"version\":\"1.0\",\"params\":[{\"output\":\"\"}],\"id\":50}"
     postAPICall(lib,json)
 }
 
 def setSoundVolume(def Level) {
     if (logEnable) log.debug "Executing 'setSoundVolume' with ${level} "
     def lib = "/sony/audio"
-    def json = "{\"method\":\"setAudioVolume\",\"version\":\"1.1\",\"params\":[{\"volume\":\"${Level}\",\"output\":\"\"}],\"id\":51}"
+    def json = "{\"method\":\"setAudioVolume\",\"id\":51,\"params\":[{\"volume\":\"${Level}\",\"target\":\"\",\"ui\":\"on\"}],\"version\":\"1.2\"}"
     postAPICall(lib,json)
     getSoundVolume()
-}
-
-def getSubLevel() {
-  if (logEnable) log.debug "Executing 'getSubLevel' "
-    def lib = "/sony/audio"
-    def json = "{\"method\":\"getSoundSettings\",\"version\":\"1.1\",\"params\":[{\"target\":\"subwooferLevel\"}],\"id\":55}"
-    postAPICall(lib,json)
-}
-
-def setSubLevel(def Level) {
-  if (logEnable) log.debug "Executing 'setSubLevel' with ${Level}"
-    def lib = "/sony/audio"
-    def json = "{\"method\":\"setSoundSettings\",\"version\":\"1.1\",\"params\":[{\"settings\":[{\"value\":\"${Level}\",\"target\":\"subwooferLevel\"}]}],\"id\":56}"
-    postAPICall(lib,json)
-    getSubLevel()
 }
 
 def getMuteStatus(){
     if (logEnable) log.debug "Executing 'getMuteStatus' "
     def lib = "/sony/audio"
-    def json = "{\"method\":\"getVolumeInformation\",\"version\":\"1.1\",\"params\":[{\"output\":\"\"}],\"id\":40}"
+    def json = "{\"method\":\"getVolumeInformation\",\"version\":\"1.0\",\"params\":[{\"output\":\"\"}],\"id\":40}"
     postAPICall(lib,json)
 }
 
 def setMute(){
     if (logEnable) log.debug "Executing 'setMute' "
     def lib = "/sony/audio"
-    def json = "{\"method\":\"setAudioMute\",\"id\":41,\"params\":[{\"mute\":\"on\"}],\"version\":\"1.1\"}"
+    def json = "{\"method\":\"setAudioMute\",\"id\":41,\"params\":[{\"status\":true}],\"version\":\"1.0\"}"
     postAPICall(lib,json)
     pauseExecution(2000)
     getMuteStatus()
@@ -481,7 +481,7 @@ def setMute(){
 def setUnMute(){
     if (logEnable) log.debug "Executing 'setUnMute' "
     def lib = "/sony/audio"
-    def json = "{\"method\":\"setAudioMute\",\"id\":42,\"params\":[{\"mute\":\"off\"}],\"version\":\"1.1\"}"
+    def json = "{\"method\":\"setAudioMute\",\"id\":42,\"params\":[{\"status\":false}],\"version\":\"1.0\"}"
     postAPICall(lib,json)
     pauseExecution(2000)
     getMuteStatus()
@@ -490,50 +490,8 @@ def setUnMute(){
 def getSystemInfo(){
     if (logEnable) log.debug "Executing 'getSystemInfo' "
     def lib = "/sony/system"
-    def json = "{\"method\":\"getSystemInformation\",\"id\":99,\"params\":[],\"version\":\"1.4\"}"
+    def json = "{\"method\":\"getSystemInformation\",\"id\":99,\"params\":[],\"version\":\"1.0\"}"
     postAPICall(lib,json)
-}
-
-def getNightModeStatus(){
-    if (logEnable) log.debug "Executing 'getNightModeStatus' "
-    def lib = "/sony/audio"
-    def json = "{\"method\":\"getSoundSettings\",\"id\":61,\"params\":[{\"target\":\"nightMode\"}],\"version\":\"1.1\"}"
-    postAPICall(lib,json)
-}
-
-def setNightModeOn(){
-    if (logEnable) log.debug "Executing 'setNightModeOn' "
-    def lib = "/sony/audio"
-    def json = "{\"method\":\"setSoundSettings\",\"id\":62,\"params\":[{\"settings\":[{\"value\":\"on\",\"target\":\"nightMode\"}]}],\"version\":\"1.1\"}"
-    postAPICall(lib,json)
-        pauseExecution(2000)
-    getNightModeStatus()
-}
-
-def setNightModeOff(){
-    if (logEnable) log.debug "Executing 'setNightModeOff' "
-    def lib = "/sony/audio"
-    def json = "{\"method\":\"setSoundSettings\",\"id\":63,\"params\":[{\"settings\":[{\"value\":\"off\",\"target\":\"nightMode\"}]}],\"version\":\"1.1\"}"
-    postAPICall(lib,json)
-            pauseExecution(2000)
-    getNightModeStatus()
-}
-
-def getSoundField(){
-    if (logEnable) log.debug "Executing 'getSoundField' "
-    def lib = "/sony/audio"
-    def json = "{\"method\":\"getSoundSettings\",\"id\":65,\"params\":[{\"target\":\"soundField\"}],\"version\":\"1.1\"}"
-    postAPICall(lib,json)
-}
-
-def setSoundField(def mode){
-    if (logEnable) log.debug "Executing 'setSoundField' "
-    if (logEnable) log.debug "variable is ${mode}"
-    def lib = "/sony/audio"
-    def json = "{\"method\":\"setSoundSettings\",\"id\":66,\"params\":[{\"settings\":[{\"value\":\"${mode}\",\"target\":\"soundField\"}]}],\"version\":\"1.1\"}"
-    postAPICall(lib,json)
-        pauseExecution(2000)
-    getSoundField()
 }
 
 def getInterfaceInfo(){
@@ -543,10 +501,10 @@ def getInterfaceInfo(){
     postAPICall(lib,json)
 }
 
-def getDeviceMiscSettings(){
-    if (logEnable) log.debug "Executing 'getMiscSettings' "
+def getEthernetSettings(){
+    if (logEnable) log.debug "Executing 'getEthernetSettings' "
     def lib = "/sony/system"
-    def json = "{\"method\":\"getDeviceMiscSettings\",\"id\":97,\"params\":[{\"target\":\"deviceName\"}],\"version\":\"1.0\"}"
+    def json = "{\"method\":\"getNetworkSettings\",\"id\":97,\"params\":[{\"netif\":\"eth0\"}],\"version\":\"1.0\"}"
     postAPICall(lib,json)
 }
 
@@ -568,9 +526,104 @@ def sendDebugString(libpath,jsonmsg){
 def getCurrentSource(){
         if (logEnable) log.debug "Executing 'getCurrentSource' "
     def lib = "/sony/avContent"
-    def json = "{\"method\":\"getPlayingContentInfo\",\"id\":70,\"params\":[{\"output\":\"\"}],\"version\":\"1.2\"}"
+    def json = "{\"method\":\"getPlayingContentInfo\",\"id\":70,\"params\":[{\"output\":\"\"}],\"version\":\"1.0\"}"
     postAPICall(lib,json)
 }
+
+def Reboot(){
+    if (logEnable) log.debug "Reboot Pressed"
+    if (logEnable) log.debug "Executing 'Reboot' "
+    def lib = "/sony/system"
+    def json = "{\"method\":\"requestReboot\",\"id\":10,\"params\": [],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def TerminateApps(){
+    if (logEnable) log.debug "Terminate Apps Pressed"
+    if (logEnable) log.debug "Executing 'TerminateApps' "
+    def lib = "/sony/appControl"
+    def json = "{\"method\":\"terminateApps\",\"id\":55,\"params\":[],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+    pauseExecution(2000)
+    refresh()
+}
+
+def InputSelect(def inputname){
+    if (logEnable) log.debug "InputSelect Pressed with ${inputname}"
+def input = null
+    if (inputname == "HDMI1") { input = "extInput:hdmi?port=1"}
+    if (inputname == "HDMI2") { input = "extInput:hdmi?port=2"}
+    if (inputname == "HDMI3") { input = "extInput:hdmi?port=3"}
+    if (inputname == "HDMI4") { input = "extInput:hdmi?port=4"}
+    SetInput(input)
+
+}
+
+def SetInput(input){
+    if (logEnable) log.debug "Executing 'SetInput' "
+    def lib = "/sony/avContent"
+    def json = "{\"method\":\"setPlayContent\",\"id\":101,\"params\":[{\"uri\":\"${input}\"}],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def LaunchApp(def appname){
+    if (logEnable) log.debug "LaunchApp Pressed with ${appname}"
+def app = null
+    if (appname == "YouTube") { app = "com.sony.dtv.com.google.android.youtube.tv.com.google.android.apps.youtube.tv.activity.ShellActivity"}
+    if (appname == "TV") { app = "com.sony.dtv.com.sony.dtv.tvx.com.sony.dtv.tvx.MainActivity"}
+    if (appname == "Program Guide") { app = "com.sony.dtv.com.sony.dtv.tvxlauncher.programguide.com.sony.dtv.tvxlauncher.programguide.MainActivity"}
+    if (appname == "Hulu") { app = "com.sony.dtv.com.hulu.livingroomplus.com.hulu.livingroomplus.WKFactivity"}
+    if (appname == "Pluto TV") { app = "com.sony.dtv.tv.pluto.android.tv.pluto.android.EntryPoint"}
+    if (appname == "Prime Video") { app = "com.sony.dtv.com.amazon.amazonvideo.livingroom.com.amazon.ignition.IgnitionActivity"}
+    if (appname == "Netflix") { app = "com.sony.dtv.com.netflix.ninja.com.netflix.ninja.MainActivity"}
+    if (appname == "tinyCam PRO") { app = "ecom.sony.dtv.com.alexvas.dvr.pro.com.alexvas.dvr.activity.TvMainActivity"}
+    if (appname == "Disney+") { app = "com.sony.dtv.com.disney.disneyplus.com.bamtechmedia.dominguez.main.MainActivity"}
+    if (appname == "ESPN") { app = "com.sony.dtv.com.espn.score_center.com.espn.androidtv.ui.LoadingActivity"}
+    if (appname == "Plex") { app = "com.sony.dtv.com.plexapp.android.com.plexapp.plex.activities.SplashActivity"}
+    if (appname == "Sling TV") { app = "com.sony.dtv.com.sling.com.movenetworks.StartupActivity"}
+    if (appname == "Spotify") { app = "com.sony.dtv.com.spotify.tv.android.com.spotify.tv.android.SpotifyTVActivity"}
+
+    setActiveApp(app)
+}
+
+def setActiveApp(app){
+    if (logEnable) log.debug "Executing 'setActiveApp' with ${app} "
+    def lib = "/sony/appControl"
+    def json = "{\"method\":\"setActiveApp\",\"id\":601,\"params\":[{\"uri\":\"${app}\"}],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+
+}
+
+def SendURL(def url){
+    def urlpath = url
+    if (logEnable) log.debug "Executing 'setURL' "
+    def lib = "/sony/appControl"
+    def json = "{\"method\":\"setActiveApp\",\"id\":601,\"params\":[{\"uri\":\"localapp://webappruntime?url=${urlpath}\"}],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def getSoundSettings(){
+    if (logEnable) log.debug "Executing 'getSoundSettings' "
+    def lib = "/sony/audio"
+    def json = "{\"method\":\"getSoundSettings\",\"id\":73,\"params\":[{\"target\":\"\"}],\"version\":\"1.1\"}"
+    postAPICall(lib,json)
+}
+
+def getPowerSaveMode(){
+    if (logEnable) log.debug "Executing 'getPowerSaveMode' "
+    def lib = "/sony/system"
+    def json = "{\"method\":\"getPowerSavingMode\",\"id\":89,\"params\":[],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+def getWOLMode(){
+    if (logEnable) log.debug "Executing 'getWOLMode' "
+     def lib = "/sony/system"
+    def json = "{\"method\":\"getWolMode\",\"id\":86,\"params\":[],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
+}
+
+
 
 //This will convert the selected key to the IRCC Mode
 def keyPress(key) {
@@ -582,159 +635,6 @@ def keyPress(key) {
 convertkey(key)
 }
 
-private def isValidKey(key) {
-	def keys = [
-		"Home",
-        "Num1",
-        "Num2",
-        "Num3",
-        "Num4",
-        "Num5",
-        "Num6",
-        "Num7",
-        "Num8",
-        "Num9",
-        "Num0",
-        "Num11",
-        "Num12",
-        "Enter",
-        "GGuide",
-        "ChannelUp",
-        "ChannelDown",
-        "VolumeUp",
-        "VolumeDown",
-        "Mute",
-        "TvPower",
-        "Audio",
-        "MediaAudioTrack",
-        "Tv",
-        "Input",
-        "TvInput",
-        "TvAntennaCable",
-        "WakeUp",
-        "PowerOff",
-        "Sleep",
-        "Right",
-        "Left",
-        "SleepTimer",
-        "Analog2",
-        "TvAnalog",
-        "Display",
-        "Jump",
-        "PicOff",
-        "PictureOff",
-        "Teletext",
-        "Video1",
-        "Video2",
-        "AnalogRgb1",
-        "Home",
-        "Exit",
-        "PictureMode",
-        "Confirm",
-        "Up",
-        "Down",
-        "ClosedCaption",
-        "Component1",
-        "Component2",
-        "Wide",
-        "EPG",
-        "PAP",
-        "TenKey",
-        "BSCS",
-        "Ddata",
-        "Stop",
-        "Pause",
-        "Play",
-        "Rewind",
-        "Forward",
-        "DOT",
-        "Rec",
-        "Return",
-        "Blue",
-        "Red",
-        "Green",
-        "Yellow",
-        "SubTitle",
-        "CS",
-        "BS",
-        "Digital",
-        "Options",
-        "Media",
-        "Prev",
-        "Next",
-        "DpadCenter",
-        "CursorUp",
-        "CursorDown",
-        "CursorLeft",
-        "CursorRight",
-        "ShopRemoteControlForcedDynamic",
-        "FlashPlus",
-        "FlashMinus",
-        "DemoMode",
-        "Analog",
-        "Mode3D",
-        "DigitalToggle",
-        "DemoSurround",
-        "*AD",
-        "AudioMixUp",
-        "AudioMixDown",
-        "PhotoFrame",
-        "Tv_Radio",
-        "SyncMenu",
-        "Hdmi1",
-        "Hdmi2",
-        "Hdmi3",
-        "Hdmi4",
-        "TopMenu",
-        "PopUpMenu",
-        "OneTouchTimeRec",
-        "OneTouchView",
-        "DUX",
-        "FootballMode",
-        "iManual",
-        "Netflix",
-        "Assists",
-        "FeaturedApp",
-        "FeaturedAppVOD",
-        "GooglePlay",
-        "ActionMenu",
-        "Help",
-        "TvSatellite",
-        "WirelessSubwoofer",
-        "AndroidMenu",
-        "RecorderMenu",
-        "STBMenu",
-        "MuteOn",
-        "MuteOff",
-        "AudioOutput_AudioSystem",
-        "AudioOutput_TVSpeaker",
-        "AudioOutput_Toggle",
-        "ApplicationLauncher",
-        "YouTube",
-        "PartnerApp1",
-        "PartnerApp2",
-        "PartnerApp3",
-        "PartnerApp4",
-        "PartnerApp5",
-        "PartnerApp6",
-        "PartnerApp7",
-        "PartnerApp8",
-        "PartnerApp9",
-        "PartnerApp10",
-        "PartnerApp11",
-        "PartnerApp12",
-        "PartnerApp13",
-        "PartnerApp14",
-        "PartnerApp15",
-        "PartnerApp16",
-        "PartnerApp17",
-        "PartnerApp18",
-        "PartnerApp19",
-        "PartnerApp20"
-		]
-	
-	return keys.contains(key)
-}
 
 private convertkey(key){
     def remotecommand = null
@@ -904,4 +804,11 @@ private RemoteIRCC(key,remotecommand){
      )
      sendHubCommand(sonycmd)
      if (logEnable) log.debug( "hubAction = ${sonycmd}" )
+}
+
+def parse(description) {
+    //adding to prevent error during button command
+  if (logEnable) log.debug ("Parsing '${description}'")
+  def msg = parseLanMessage(description)
+	if (logEnable) log.debug "${msg}"
 }
