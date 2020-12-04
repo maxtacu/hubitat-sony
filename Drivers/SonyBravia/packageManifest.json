@@ -1,0 +1,19 @@
+{
+    "packageName": "Sony Bravia TV Rest Control",
+    "author": "Alex Jones",
+    "version": "1.0.6",
+    "minimumHEVersion": "2.1.8.117",
+    "communityLink": "https://community.hubitat.com/t/release-sony-bravia-tv-rest-control/57350",
+    "releaseNotes": "To control Sony TV's Add Driver, Enter IP and PSK. Save",
+    "dateReleased": "2020-11-30",
+    "drivers": [
+      {
+        "id": "a1134ab1-3422-4853-99e2-21abdd39e1e0",
+        "name": "Sony Bravia TV Rest Control",
+        "namespace": "ajones",
+        "location": "https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyBravia/SonyBraviaTVRestControl.groovy",
+        "required": true
+      }
+    ]
+  }
+  
