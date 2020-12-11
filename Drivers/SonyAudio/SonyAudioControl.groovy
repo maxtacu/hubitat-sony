@@ -1,5 +1,5 @@
 /**
- *  Sony Audio Control
+ *  Sony Audio Control Beta
  *  Version=1.0.6
  *  Hubitat Integration
  *  Utilized the below URL for commands and values
@@ -24,7 +24,7 @@
  *
  */
  metadata {
-  definition (name: "Sony Audio Control", namespace: "ajones", author: "Alex Jones") {
+  definition (name: "Sony Audio Control Beta", namespace: "ajones", author: "Alex Jones") {
     capability "Switch"
     capability "Refresh"
     capability "Polling"
@@ -36,52 +36,18 @@
     command "setSoundField", [[name:"Choose Soundfield", type: "ENUM", constraints: [
 				"","clearAudio","movie","music","sports","game","standard","off"] ] ]
     //Enable below command if you want to return json data for debugging. This might be used to see which methods your device supports or to test a post call.            
-    command "sendDebugString",[[name:"libpath",type:"STRING", description:"path to lib", constraints:["STRING"]],
+    command "sendDebugString",[[name:"libpath",type:"STRING", description:"path to lib, '/sony/system'", constraints:["STRING"]],
     [name:"jsonmsg",type:"JSON_OBJECT", description:"json msg for post", constraints:["JSON_OBJECT"]]
     ]
-    command "keyPress", [[name:"Key Press Action", type: "ENUM", constraints: [
-                "Enter",
-                "ChannelUp",
-                "ChannelDown",
-                "VolumeUp",
-                "VolumeDown",
-                "Mute",
-                "TvPower",
-                "Tv",
-                "WakeUp",
-                "PowerOff",
-                "Sleep",
-                "Right",
-                "Left",
-                "SleepTimer",
-                "Display",
-                "Home",
-                "Exit",
-                "Up",
-                "Down",
-                "ClosedCaption",
-                "Wide",
-                "Stop",
-                "Pause",
-                "Play",
-                "Rewind",
-                "Forward",
-                "Prev",
-                "Next",
-                "DpadCenter",
-                "Hdmi1",
-                "Hdmi2",
-                "Hdmi3",
-                "Hdmi4",
-                "Netflix",
-                "MuteOn",
-                "MuteOff",
-                "YouTube"
-                ] ] ]
+    command "getInfo"
+    command "getCapability"
+    command "clearCapability"
     attribute "SubLevel", "number"
     attribute "NightMode", "string"
     attribute "SoundField", "string"
     attribute "CurrentInput", "string"
+    attribute "ZZJSONReturn", "string"
+    attribute "SupportedAPI", "string"
     }
 
 preferences {
@@ -111,6 +77,7 @@ preferences {
     } else {
         "runEvery${minutes}Minutes"(refresh)
     }
+    runEvery30Minutes(getInfo)
 }
 
 //Below function will take place anytime the save button is pressed on the driver page
@@ -125,8 +92,10 @@ def updated() {
         startScheduledRefresh()
     }
     state.updated = now()
+    state.driverversion = "1.0.6"
     if (logEnable) runIn(3600,logsOff)
     refresh()
+    getInfo()
 }
 
 //Below function will disable debugs logs after 3600 seconds called in the updated function
@@ -277,9 +246,20 @@ private jsonreturnaction(response){
     if (logEnable) log.debug "CurrentInput State is '${currentinput}'"
     
   }
+    if (response.data?.id == 998) {
+  	//Set the Global value of state.SupportedAPIs
+    if (logEnable) log.debug "SupportedAPIs is ${response.data}"
+    def sprtapirespX = response.data
+    state.sprtapiresp = response.data
+    sendEvent(name: "SupportedAPI", value: sprtapirespX, isStateChange: true)
+    
+  }
     if (response.data?.id == 999) {
   	//Set the Global value of state.currentinput
-    if (logEnable) log.debug "parsestring result is ${response.data.result}"
+    if (logEnable) log.debug "parsestring result is ${response.data}"
+        state.zzdebugjsonstate = response.data
+       def debugjson = response.data
+         sendEvent(name: "ZZJSONReturn", value: debugjson, isStateChange: true)
   }
     else {if (logEnable) log.debug "no id found for result action"}
 
@@ -311,15 +291,41 @@ def refresh() {
     getSoundVolume()
     getSubLevel()
     getMuteStatus()
-    getSystemInfo()
     getNightModeStatus()
     getSoundField()
-    getInterfaceInfo()
-    getDeviceMiscSettings()
-    getPowerSettings()
     getCurrentSource()
 }
 
+def getInfo(){
+    getInterfaceInfo()
+    getDeviceMiscSettings()
+    getSystemInfo()
+    getPowerSettings()
+    clearCapability()
+
+}
+
+def getCapability(){
+    getSupportedAPIInfo()
+
+}
+
+def clearCapability(){
+    if (logEnable) log.debug "clearCapability clicked"
+    if (logEnable) log.debug "state.remove zzdebugjsonstate"
+    state.remove("zzdebugjsonstate")
+    if (logEnable) log.debug "remove attribute ZZJSONReturn"
+    sendEvent(name: "ZZJSONReturn", value: "null", isStateChange: true)
+    if (logEnable) log.debug "zzdebugjsonlibpath"
+    state.remove("zzdebugjsonlibpath")
+    if (logEnable) log.debug "zzdebugjsonmsg"
+    state.remove("zzdebugjsonmsg")
+    if (logEnable) log.debug "state.remove sprtapiresp"
+    state.remove("state.sprtapiresp")
+    if (logEnable) log.debug "remove attribute SupportedAPI"
+    sendEvent(name: "SupportedAPI", value: "null", isStateChange: true)
+
+}
 
 //AudioVolume Capability++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def setVolume(level) {
@@ -561,6 +567,8 @@ def getPowerSettings(){
 def sendDebugString(libpath,jsonmsg){
     //add ID of 999 to test PARSE message
     if (logEnable) log.debug "Executing 'sendDebugString' "
+    state.zzdebugjsonlibpath = libpath
+    state.zzdebugjsonmsg = jsonmsg
     def lib = libpath
     def json = jsonmsg
     postAPICall(lib,json)
@@ -573,336 +581,9 @@ def getCurrentSource(){
     postAPICall(lib,json)
 }
 
-//This will convert the selected key to the IRCC Mode
-def keyPress(key) {
-	//if (!isValidKey(key)) {
-		//log.warning("Invalid key press: ${key}")
-		//return
-	//}
-    if (logEnable) log.debug "Executing '${key}'"
-convertkey(key)
-}
-
-private def isValidKey(key) {
-	def keys = [
-		"Home",
-        "Num1",
-        "Num2",
-        "Num3",
-        "Num4",
-        "Num5",
-        "Num6",
-        "Num7",
-        "Num8",
-        "Num9",
-        "Num0",
-        "Num11",
-        "Num12",
-        "Enter",
-        "GGuide",
-        "ChannelUp",
-        "ChannelDown",
-        "VolumeUp",
-        "VolumeDown",
-        "Mute",
-        "TvPower",
-        "Audio",
-        "MediaAudioTrack",
-        "Tv",
-        "Input",
-        "TvInput",
-        "TvAntennaCable",
-        "WakeUp",
-        "PowerOff",
-        "Sleep",
-        "Right",
-        "Left",
-        "SleepTimer",
-        "Analog2",
-        "TvAnalog",
-        "Display",
-        "Jump",
-        "PicOff",
-        "PictureOff",
-        "Teletext",
-        "Video1",
-        "Video2",
-        "AnalogRgb1",
-        "Home",
-        "Exit",
-        "PictureMode",
-        "Confirm",
-        "Up",
-        "Down",
-        "ClosedCaption",
-        "Component1",
-        "Component2",
-        "Wide",
-        "EPG",
-        "PAP",
-        "TenKey",
-        "BSCS",
-        "Ddata",
-        "Stop",
-        "Pause",
-        "Play",
-        "Rewind",
-        "Forward",
-        "DOT",
-        "Rec",
-        "Return",
-        "Blue",
-        "Red",
-        "Green",
-        "Yellow",
-        "SubTitle",
-        "CS",
-        "BS",
-        "Digital",
-        "Options",
-        "Media",
-        "Prev",
-        "Next",
-        "DpadCenter",
-        "CursorUp",
-        "CursorDown",
-        "CursorLeft",
-        "CursorRight",
-        "ShopRemoteControlForcedDynamic",
-        "FlashPlus",
-        "FlashMinus",
-        "DemoMode",
-        "Analog",
-        "Mode3D",
-        "DigitalToggle",
-        "DemoSurround",
-        "*AD",
-        "AudioMixUp",
-        "AudioMixDown",
-        "PhotoFrame",
-        "Tv_Radio",
-        "SyncMenu",
-        "Hdmi1",
-        "Hdmi2",
-        "Hdmi3",
-        "Hdmi4",
-        "TopMenu",
-        "PopUpMenu",
-        "OneTouchTimeRec",
-        "OneTouchView",
-        "DUX",
-        "FootballMode",
-        "iManual",
-        "Netflix",
-        "Assists",
-        "FeaturedApp",
-        "FeaturedAppVOD",
-        "GooglePlay",
-        "ActionMenu",
-        "Help",
-        "TvSatellite",
-        "WirelessSubwoofer",
-        "AndroidMenu",
-        "RecorderMenu",
-        "STBMenu",
-        "MuteOn",
-        "MuteOff",
-        "AudioOutput_AudioSystem",
-        "AudioOutput_TVSpeaker",
-        "AudioOutput_Toggle",
-        "ApplicationLauncher",
-        "YouTube",
-        "PartnerApp1",
-        "PartnerApp2",
-        "PartnerApp3",
-        "PartnerApp4",
-        "PartnerApp5",
-        "PartnerApp6",
-        "PartnerApp7",
-        "PartnerApp8",
-        "PartnerApp9",
-        "PartnerApp10",
-        "PartnerApp11",
-        "PartnerApp12",
-        "PartnerApp13",
-        "PartnerApp14",
-        "PartnerApp15",
-        "PartnerApp16",
-        "PartnerApp17",
-        "PartnerApp18",
-        "PartnerApp19",
-        "PartnerApp20"
-		]
-	
-	return keys.contains(key)
-}
-
-private convertkey(key){
-    def remotecommand = null
-    if (key == "Num1") { remotecommand = "AAAAAQAAAAEAAAAAAw=="}
-    if (key == "Num2") { remotecommand = "AAAAAQAAAAEAAAABAw=="}
-    if (key == "Num3") { remotecommand = "AAAAAQAAAAEAAAACAw=="}
-    if (key == "Num4") { remotecommand = "AAAAAQAAAAEAAAADAw=="}
-    if (key == "Num5") { remotecommand = "AAAAAQAAAAEAAAAEAw=="}
-    if (key == "Num6") { remotecommand = "AAAAAQAAAAEAAAAFAw=="}
-    if (key == "Num7") { remotecommand = "AAAAAQAAAAEAAAAGAw=="}
-    if (key == "Num8") { remotecommand = "AAAAAQAAAAEAAAAHAw=="}
-    if (key == "Num9") { remotecommand = "AAAAAQAAAAEAAAAIAw=="}
-    if (key == "Num0") { remotecommand = "AAAAAQAAAAEAAAAJAw=="}
-    if (key == "Num11") { remotecommand = "AAAAAQAAAAEAAAAKAw=="}
-    if (key == "Num12") { remotecommand = "AAAAAQAAAAEAAAALAw=="}
-    if (key == "Enter") { remotecommand = "AAAAAQAAAAEAAAALAw=="}
-    if (key == "GGuide") { remotecommand = "AAAAAQAAAAEAAAAOAw=="}
-    if (key == "ChannelUp") { remotecommand = "AAAAAQAAAAEAAAAQAw=="}
-    if (key == "ChannelDown") { remotecommand = "AAAAAQAAAAEAAAARAw=="}
-    if (key == "VolumeUp") { remotecommand = "AAAAAQAAAAEAAAASAw=="}
-    if (key == "VolumeDown") { remotecommand = "AAAAAQAAAAEAAAATAw=="}
-    if (key == "Mute") { remotecommand = "AAAAAQAAAAEAAAAUAw=="}
-    if (key == "TvPower") { remotecommand = "AAAAAQAAAAEAAAAVAw=="}
-    if (key == "Audio") { remotecommand = "AAAAAQAAAAEAAAAXAw=="}
-    if (key == "MediaAudioTrack") { remotecommand = "AAAAAQAAAAEAAAAXAw=="}
-    if (key == "Tv") { remotecommand = "AAAAAQAAAAEAAAAkAw=="}
-    if (key == "Input") { remotecommand = "AAAAAQAAAAEAAAAlAw=="}
-    if (key == "TvInput") { remotecommand = "AAAAAQAAAAEAAAAlAw=="}
-    if (key == "TvAntennaCable") { remotecommand = "AAAAAQAAAAEAAAAqAw=="}
-    if (key == "WakeUp") { remotecommand = "AAAAAQAAAAEAAAAuAw=="}
-    if (key == "PowerOff") { remotecommand = "AAAAAQAAAAEAAAAvAw=="}
-    if (key == "Sleep") { remotecommand = "AAAAAQAAAAEAAAAvAw=="}
-    if (key == "Right") { remotecommand = "AAAAAQAAAAEAAAAzAw=="}
-    if (key == "Left") { remotecommand = "AAAAAQAAAAEAAAA0Aw=="}
-    if (key == "SleepTimer") { remotecommand = "AAAAAQAAAAEAAAA2Aw=="}
-    if (key == "Analog2") { remotecommand = "AAAAAQAAAAEAAAA4Aw=="}
-    if (key == "TvAnalog") { remotecommand = "AAAAAQAAAAEAAAA4Aw=="}
-    if (key == "Display") { remotecommand = "AAAAAQAAAAEAAAA6Aw=="}
-    if (key == "Jump") { remotecommand = "AAAAAQAAAAEAAAA7Aw=="}
-    if (key == "PicOff") { remotecommand = "AAAAAQAAAAEAAAA+Aw=="}
-    if (key == "PictureOff") { remotecommand = "AAAAAQAAAAEAAAA+Aw=="}
-    if (key == "Teletext") { remotecommand = "AAAAAQAAAAEAAAA/Aw=="}
-    if (key == "Video1") { remotecommand = "AAAAAQAAAAEAAABAAw=="}
-    if (key == "Video2") { remotecommand = "AAAAAQAAAAEAAABBAw=="}
-    if (key == "AnalogRgb1") { remotecommand = "AAAAAQAAAAEAAABDAw=="}
-    if (key == "Home") { remotecommand = "AAAAAQAAAAEAAABgAw=="}
-    if (key == "Exit") { remotecommand = "AAAAAQAAAAEAAABjAw=="}
-    if (key == "PictureMode") { remotecommand = "AAAAAQAAAAEAAABkAw=="}
-    if (key == "Confirm") { remotecommand = "AAAAAQAAAAEAAABlAw=="}
-    if (key == "Up") { remotecommand = "AAAAAQAAAAEAAAB0Aw=="}
-    if (key == "Down") { remotecommand = "AAAAAQAAAAEAAAB1Aw=="}
-    if (key == "ClosedCaption") { remotecommand = "AAAAAgAAAKQAAAAQAw=="}
-    if (key == "Component1") { remotecommand = "AAAAAgAAAKQAAAA2Aw=="}
-    if (key == "Component2") { remotecommand = "AAAAAgAAAKQAAAA3Aw=="}
-    if (key == "Wide") { remotecommand = "AAAAAgAAAKQAAAA9Aw=="}
-    if (key == "EPG") { remotecommand = "AAAAAgAAAKQAAABbAw=="}
-    if (key == "PAP") { remotecommand = "AAAAAgAAAKQAAAB3Aw=="}
-    if (key == "TenKey") { remotecommand = "AAAAAgAAAJcAAAAMAw=="}
-    if (key == "BSCS") { remotecommand = "AAAAAgAAAJcAAAAQAw=="}
-    if (key == "Ddata") { remotecommand = "AAAAAgAAAJcAAAAVAw=="}
-    if (key == "Stop") { remotecommand = "AAAAAgAAAJcAAAAYAw=="}
-    if (key == "Pause") { remotecommand = "AAAAAgAAAJcAAAAZAw=="}
-    if (key == "Play") { remotecommand = "AAAAAgAAAJcAAAAaAw=="}
-    if (key == "Rewind") { remotecommand = "AAAAAgAAAJcAAAAbAw=="}
-    if (key == "Forward") { remotecommand = "AAAAAgAAAJcAAAAcAw=="}
-    if (key == "DOT") { remotecommand = "AAAAAgAAAJcAAAAdAw=="}
-    if (key == "Rec") { remotecommand = "AAAAAgAAAJcAAAAgAw=="}
-    if (key == "Return") { remotecommand = "AAAAAgAAAJcAAAAjAw=="}
-    if (key == "Blue") { remotecommand = "AAAAAgAAAJcAAAAkAw=="}
-    if (key == "Red") { remotecommand = "AAAAAgAAAJcAAAAlAw=="}
-    if (key == "Green") { remotecommand = "AAAAAgAAAJcAAAAmAw=="}
-    if (key == "Yellow") { remotecommand = "AAAAAgAAAJcAAAAnAw=="}
-    if (key == "SubTitle") { remotecommand = "AAAAAgAAAJcAAAAoAw=="}
-    if (key == "CS") { remotecommand = "AAAAAgAAAJcAAAArAw=="}
-    if (key == "BS") { remotecommand = "AAAAAgAAAJcAAAAsAw=="}
-    if (key == "Digital") { remotecommand = "AAAAAgAAAJcAAAAyAw=="}
-    if (key == "Options") { remotecommand = "AAAAAgAAAJcAAAA2Aw=="}
-    if (key == "Media") { remotecommand = "AAAAAgAAAJcAAAA4Aw=="}
-    if (key == "Prev") { remotecommand = "AAAAAgAAAJcAAAA8Aw=="}
-    if (key == "Next") { remotecommand = "AAAAAgAAAJcAAAA9Aw=="}
-    if (key == "DpadCenter") { remotecommand = "AAAAAgAAAJcAAABKAw=="}
-    if (key == "CursorUp") { remotecommand = "AAAAAgAAAJcAAABPAw=="}
-    if (key == "CursorDown") { remotecommand = "AAAAAgAAAJcAAABQAw=="}
-    if (key == "CursorLeft") { remotecommand = "AAAAAgAAAJcAAABNAw=="}
-    if (key == "CursorRight") { remotecommand = "AAAAAgAAAJcAAABOAw=="}
-    if (key == "ShopRemoteControlForcedDynamic") { remotecommand = "AAAAAgAAAJcAAABqAw=="}
-    if (key == "FlashPlus") { remotecommand = "AAAAAgAAAJcAAAB4Aw=="}
-    if (key == "FlashMinus") { remotecommand = "AAAAAgAAAJcAAAB5Aw=="}
-    if (key == "DemoMode") { remotecommand = "AAAAAgAAAJcAAAB8Aw=="}
-    if (key == "Analog") { remotecommand = "AAAAAgAAAHcAAAANAw=="}
-    if (key == "Mode3D") { remotecommand = "AAAAAgAAAHcAAABNAw=="}
-    if (key == "DigitalToggle") { remotecommand = "AAAAAgAAAHcAAABSAw=="}
-    if (key == "DemoSurround") { remotecommand = "AAAAAgAAAHcAAAB7Aw=="}
-    if (key == "*AD") { remotecommand = "AAAAAgAAABoAAAA7Aw=="}
-    if (key == "AudioMixUp") { remotecommand = "AAAAAgAAABoAAAA8Aw=="}
-    if (key == "AudioMixDown") { remotecommand = "AAAAAgAAABoAAAA9Aw=="}
-    if (key == "PhotoFrame") { remotecommand = "AAAAAgAAABoAAABVAw=="}
-    if (key == "Tv_Radio") { remotecommand = "AAAAAgAAABoAAABXAw=="}
-    if (key == "SyncMenu") { remotecommand = "AAAAAgAAABoAAABYAw=="}
-    if (key == "Hdmi1") { remotecommand = "AAAAAgAAABoAAABaAw=="}
-    if (key == "Hdmi2") { remotecommand = "AAAAAgAAABoAAABbAw=="}
-    if (key == "Hdmi3") { remotecommand = "AAAAAgAAABoAAABcAw=="}
-    if (key == "Hdmi4") { remotecommand = "AAAAAgAAABoAAABdAw=="}
-    if (key == "TopMenu") { remotecommand = "AAAAAgAAABoAAABgAw=="}
-    if (key == "PopUpMenu") { remotecommand = "AAAAAgAAABoAAABhAw=="}
-    if (key == "OneTouchTimeRec") { remotecommand = "AAAAAgAAABoAAABkAw=="}
-    if (key == "OneTouchView") { remotecommand = "AAAAAgAAABoAAABlAw=="}
-    if (key == "DUX") { remotecommand = "AAAAAgAAABoAAABzAw=="}
-    if (key == "FootballMode") { remotecommand = "AAAAAgAAABoAAAB2Aw=="}
-    if (key == "iManual") { remotecommand = "AAAAAgAAABoAAAB7Aw=="}
-    if (key == "Netflix") { remotecommand = "AAAAAgAAABoAAAB8Aw=="}
-    if (key == "Assists") { remotecommand = "AAAAAgAAAMQAAAA7Aw=="}
-    if (key == "FeaturedApp") { remotecommand = "AAAAAgAAAMQAAABEAw=="}
-    if (key == "FeaturedAppVOD") { remotecommand = "AAAAAgAAAMQAAABFAw=="}
-    if (key == "GooglePlay") { remotecommand = "AAAAAgAAAMQAAABGAw=="}
-    if (key == "ActionMenu") { remotecommand = "AAAAAgAAAMQAAABLAw=="}
-    if (key == "Help") { remotecommand = "AAAAAgAAAMQAAABNAw=="}
-    if (key == "TvSatellite") { remotecommand = "AAAAAgAAAMQAAABOAw=="}
-    if (key == "WirelessSubwoofer") { remotecommand = "AAAAAgAAAMQAAAB+Aw=="}
-    if (key == "AndroidMenu") { remotecommand = "AAAAAgAAAMQAAABPAw=="}
-    if (key == "RecorderMenu") { remotecommand = "AAAAAgAAAMQAAABIAw=="}
-    if (key == "STBMenu") { remotecommand = "AAAAAgAAAMQAAABJAw=="}
-    if (key == "MuteOn") { remotecommand = "AAAAAgAAAMQAAAAsAw=="}
-    if (key == "MuteOff") { remotecommand = "AAAAAgAAAMQAAAAtAw=="}
-    if (key == "AudioOutput_AudioSystem") { remotecommand = "AAAAAgAAAMQAAAAiAw=="}
-    if (key == "AudioOutput_TVSpeaker") { remotecommand = "AAAAAgAAAMQAAAAjAw=="}
-    if (key == "AudioOutput_Toggle") { remotecommand = "AAAAAgAAAMQAAAAkAw=="}
-    if (key == "ApplicationLauncher") { remotecommand = "AAAAAgAAAMQAAAAqAw=="}
-    if (key == "YouTube") { remotecommand = "AAAAAgAAAMQAAABHAw=="}
-    if (key == "PartnerApp1") { remotecommand = "AAAAAgAACB8AAAAAAw=="}
-    if (key == "PartnerApp2") { remotecommand = "AAAAAgAACB8AAAABAw=="}
-    if (key == "PartnerApp3") { remotecommand = "AAAAAgAACB8AAAACAw=="}
-    if (key == "PartnerApp4") { remotecommand = "AAAAAgAACB8AAAADAw=="}
-    if (key == "PartnerApp5") { remotecommand = "AAAAAgAACB8AAAAEAw=="}
-    if (key == "PartnerApp6") { remotecommand = "AAAAAgAACB8AAAAFAw=="}
-    if (key == "PartnerApp7") { remotecommand = "AAAAAgAACB8AAAAGAw=="}
-    if (key == "PartnerApp8") { remotecommand = "AAAAAgAACB8AAAAHAw=="}
-    if (key == "PartnerApp9") { remotecommand = "AAAAAgAACB8AAAAIAw=="}
-    if (key == "PartnerApp10") { remotecommand = "AAAAAgAACB8AAAAJAw=="}
-    if (key == "PartnerApp11") { remotecommand = "AAAAAgAACB8AAAAKAw=="}
-    if (key == "PartnerApp12") { remotecommand = "AAAAAgAACB8AAAALAw=="}
-    if (key == "PartnerApp13") { remotecommand = "AAAAAgAACB8AAAAMAw=="}
-    if (key == "PartnerApp14") { remotecommand = "AAAAAgAACB8AAAANAw=="}
-    if (key == "PartnerApp15") { remotecommand = "AAAAAgAACB8AAAAOAw=="}
-    if (key == "PartnerApp16") { remotecommand = "AAAAAgAACB8AAAAPAw=="}
-    if (key == "PartnerApp17") { remotecommand = "AAAAAgAACB8AAAAQAw=="}
-    if (key == "PartnerApp18") { remotecommand = "AAAAAgAACB8AAAARAw=="}
-    if (key == "PartnerApp19") { remotecommand = "AAAAAgAACB8AAAASAw=="}
-    if (key == "PartnerApp20") { remotecommand = "AAAAAgAACB8AAAATAw=="}
-
-
-RemoteIRCC(key,remotecommand)
-}
-
-
-
-//Below Function will send button commands from the remote. Play, Pause, Skip, Etc
-private RemoteIRCC(key,remotecommand){
-	if (logEnable) log.debug "Sending Button: ${key} ${remotecommand}"
-    def rawcmd = "${remotecommand}"
-    def sonycmd = new hubitat.device.HubSoapAction(
-            path:    '/sony/IRCC',
-            urn:     "urn:schemas-sony-com:service:IRCC:1",
-            action:  "X_SendIRCC",
-            body:    ["IRCCCode":rawcmd],
-            headers: [Host:"${settings.ipAddress}:${settings.ipPort}", 'X-Auth-PSK':"${settings.PSK}"]
-     )
-     sendHubCommand(sonycmd)
-     if (logEnable) log.debug( "hubAction = ${sonycmd}" )
+def getSupportedAPIInfo(){
+        if (logEnable) log.debug "Executing 'getSupportedAPIInfo' "
+    def lib = "/sony/guide"
+    def json = "{\"method\":\"getSupportedApiInfo\",\"id\":998,\"params\":[{\"services\":[\"system\",\"avContent\",\"guide\",\"appControl\",\"audio\",\"videoScreen\"]}],\"version\":\"1.0\"}"
+    postAPICall(lib,json)
 }
