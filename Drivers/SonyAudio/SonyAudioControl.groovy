@@ -39,6 +39,13 @@
     command "sendDebugString",[[name:"libpath",type:"STRING", description:"path to lib, '/sony/system'", constraints:["STRING"]],
     [name:"jsonmsg",type:"JSON_OBJECT", description:"json msg for post", constraints:["JSON_OBJECT"]]
     ]
+    command "InputSelect", [[name:"Choose Input", type: "ENUM", constraints: [
+				"",
+                "HDMI1",
+                "HDMI2",
+                "HDMI3",
+                "TV"
+                ] ] ]
     command "getInfo"
     command "getCapability"
     command "clearCapability"
@@ -250,14 +257,17 @@ private jsonreturnaction(response){
   	//Set the Global value of state.SupportedAPIs
     if (logEnable) log.debug "SupportedAPIs is ${response.data}"
     def sprtapirespX = response.data
-    state.sprtapiresp = response.data
+    //state.sprtapiresp = response.data
     sendEvent(name: "SupportedAPI", value: sprtapirespX, isStateChange: true)
+    //system version lookups
+    def vergetpowerstatus = response.data.result.apis.
+    if (logEnable) log.debug "vergetpowerstatus is ${vergetpowerstatus}"
     
   }
     if (response.data?.id == 999) {
   	//Set the Global value of state.currentinput
     if (logEnable) log.debug "parsestring result is ${response.data}"
-        state.zzdebugjsonstate = response.data
+        //state.zzdebugjsonstate = response.data
        def debugjson = response.data
          sendEvent(name: "ZZJSONReturn", value: debugjson, isStateChange: true)
   }
@@ -307,24 +317,36 @@ def getInfo(){
 
 def getCapability(){
     getSupportedAPIInfo()
-
 }
+
 
 def clearCapability(){
     if (logEnable) log.debug "clearCapability clicked"
-    if (logEnable) log.debug "state.remove zzdebugjsonstate"
-    state.remove("zzdebugjsonstate")
     if (logEnable) log.debug "remove attribute ZZJSONReturn"
     sendEvent(name: "ZZJSONReturn", value: "null", isStateChange: true)
-    if (logEnable) log.debug "zzdebugjsonlibpath"
-    state.remove("zzdebugjsonlibpath")
-    if (logEnable) log.debug "zzdebugjsonmsg"
-    state.remove("zzdebugjsonmsg")
-    if (logEnable) log.debug "state.remove sprtapiresp"
-    state.remove("state.sprtapiresp")
     if (logEnable) log.debug "remove attribute SupportedAPI"
     sendEvent(name: "SupportedAPI", value: "null", isStateChange: true)
+}
 
+
+//SetInput++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+def InputSelect(def inputname){
+    if (logEnable) log.debug "InputSelect Pressed with ${inputname}"
+def input = null
+    if (inputname == "HDMI1") { input = "extInput:hdmi?port=1"}
+    if (inputname == "HDMI2") { input = "extInput:hdmi?port=2"}
+    if (inputname == "HDMI3") { input = "extInput:hdmi?port=3"}
+    if (inputname == "TV") { input = "extInput:tv"}
+
+    SetInput(input)
+
+}
+
+def SetInput(input){
+    if (logEnable) log.debug "Executing 'SetInput' "
+    def lib = "/sony/avContent"
+    def json = "{\"method\":\"setPlayContent\",\"id\":101,\"params\":[{\"uri\":\"${input}\"}],\"version\":\"1.2\"}"
+    postAPICall(lib,json)
 }
 
 //AudioVolume Capability++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
