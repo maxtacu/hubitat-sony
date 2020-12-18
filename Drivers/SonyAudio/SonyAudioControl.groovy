@@ -257,11 +257,16 @@ private jsonreturnaction(response){
   	//Set the Global value of state.SupportedAPIs
     if (logEnable) log.debug "SupportedAPIs is ${response.data}"
     def sprtapirespX = response.data
-    //state.sprtapiresp = response.data
     sendEvent(name: "SupportedAPI", value: sprtapirespX, isStateChange: true)
-    //system version lookups
-    def vergetpowerstatus = response.data.result.apis.
-    if (logEnable) log.debug "vergetpowerstatus is ${vergetpowerstatus}"
+ 
+    def resJson = new groovy.json.JsonSlurper().parseText(response)
+
+    def theRes = resJson?.data?.result?.get(0)?.find { it.service == "system" }
+    log.debug "theRes = ${theRes}"
+    def theApi = theRes?.apis?.find { it.name == "getPowerStatus" }
+    log.debug "theApi = ${theApi}"
+    for(thisVers in theApi?.versions) {log.debug "${thisVers?.version}"}
+
     
   }
     if (response.data?.id == 999) {
