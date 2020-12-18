@@ -258,10 +258,8 @@ private jsonreturnaction(response){
     if (logEnable) log.debug "SupportedAPIs is ${response.data}"
     def sprtapirespX = response.data
     sendEvent(name: "SupportedAPI", value: sprtapirespX, isStateChange: true)
- 
-    def resJson = new groovy.json.JsonSlurper().parseText(response)
 
-    def theRes = resJson?.data?.result?.get(0)?.find { it.service == "system" }
+    def theRes = response?.data?.result?.get(0)?.find { it.service == "system" }
     log.debug "theRes = ${theRes}"
     def theApi = theRes?.apis?.find { it.name == "getPowerStatus" }
     log.debug "theApi = ${theApi}"
