@@ -1,7 +1,7 @@
 {
     "packageName": "Sony Bravia TV Rest Control",
     "author": "Alex Jones",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "minimumHEVersion": "2.1.8.117",
     "communityLink": "https://community.hubitat.com/t/release-sony-bravia-tv-rest-control/57350",
     "releaseNotes": "To control Sony TV's Add Driver, Enter IP and PSK. Save",
