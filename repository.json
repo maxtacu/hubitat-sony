@@ -14,6 +14,6 @@
       "category": "Integrations",
       "location": "https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyAudio/packageManifest.json",
       "description": "Rest Control API for Sony Audio devices"
-    },
+    }
   ]
 }

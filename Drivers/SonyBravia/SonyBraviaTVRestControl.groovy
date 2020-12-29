@@ -354,12 +354,13 @@ private jsonreturnaction(response){
 
 def getInfo(){
     if (logEnable) log.debug "getInfo pushed"
+    if (state.devicepower == "on"){
     getSystemInfo()
     getInterfaceInfo()
     getEthernetSettings()
     getPowerSaveMode()
     getWOLMode()
-
+    }
 }
 
 //Switch Capability+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
