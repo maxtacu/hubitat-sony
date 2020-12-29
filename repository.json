@@ -10,10 +10,10 @@
       "description": "Rest Control API for Sony Bravia TV devices"
     },
     {
-      "name": "Sony Bravia TV Rest Control",
+      "name": "Sony Audio Control",
       "category": "Integrations",
       "location": "https://raw.githubusercontent.com/jonesalexr/hubitat/master/Drivers/SonyAudio/packageManifest.json",
-      "description": "Rest Control API for Sony Bravia TV devices"
+      "description": "Rest Control API for Sony Audio devices"
     }
   ]
 }
