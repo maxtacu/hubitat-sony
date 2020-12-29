@@ -1,6 +1,6 @@
 /**
  *  Sony Bravia TV Rest Control
- *  Version=1.0.6
+ *  Version=1.0.7
  *  Hubitat Integration
  *  Utilized the below URL for commands and values
  *  https://pro-bravia.sony.net/develop/integrate/rest-api/spec/index.html
