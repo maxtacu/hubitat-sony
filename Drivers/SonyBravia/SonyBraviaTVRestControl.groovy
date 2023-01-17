@@ -25,6 +25,7 @@
     capability "Refresh"
     capability "Polling"
     capability "AudioVolume"
+    capability "TV"
     command "getInfo"
     command "Reboot"
     command "TerminateApps"
@@ -51,6 +52,13 @@
                 "HDMI2",
                 "HDMI3",
                 "HDMI4"
+                ] ] ]
+    command "setPowerSavingMode", [[name:"Choose Input", type: "ENUM", constraints: [
+				"",
+                "off",
+                "low",
+                "high",
+                "pictureOff"
                 ] ] ]
     //Enable below command if you want to return json data for debugging. This might be used to see which methods your device supports or to test a post call.            
     command "sendDebugString",[[name:"libpath",type:"STRING", description:"path to lib", constraints:["STRING"]],
@@ -448,6 +456,15 @@ def setPowerStatusOff() {
     getPowerStatus()
 }
 
+def setPowerSavingMode(def mode) {
+    if (logEnable) log.debug "Executing 'setPowerSavingMode' "
+    def lib = "/sony/system"
+    def json = "{\"method\":\"setPowerSavingMode\",\"version\":\"1.0\",\"params\":[{\"mode\":${mode}}],\"id\":4}"
+    postAPICall(lib,json)
+    pauseExecution(2000)
+    getPowerStatus()
+}
+
 def getSoundVolume() {
 if (logEnable) log.debug "Executing 'getSoundVolume' "
     def lib = "/sony/audio"
@@ -456,7 +473,7 @@ if (logEnable) log.debug "Executing 'getSoundVolume' "
 }
 
 def setSoundVolume(def Level) {
-    if (logEnable) log.debug "Executing 'setSoundVolume' with ${level} "
+    if (logEnable) log.debug "Executing 'setSoundVolume' with ${Level} "
     def lib = "/sony/audio"
     def json = "{\"method\":\"setAudioVolume\",\"id\":51,\"params\":[{\"volume\":\"${Level}\",\"target\":\"\",\"ui\":\"on\"}],\"version\":\"1.2\"}"
     postAPICall(lib,json)
@@ -551,7 +568,7 @@ def TerminateApps(){
 
 def InputSelect(def inputname){
     if (logEnable) log.debug "InputSelect Pressed with ${inputname}"
-def input = null
+    def input = null
     if (inputname == "HDMI1") { input = "extInput:hdmi?port=1"}
     if (inputname == "HDMI2") { input = "extInput:hdmi?port=2"}
     if (inputname == "HDMI3") { input = "extInput:hdmi?port=3"}
@@ -569,7 +586,7 @@ def SetInput(input){
 
 def LaunchApp(def appname){
     if (logEnable) log.debug "LaunchApp Pressed with ${appname}"
-def app = null
+    def app = null
     if (appname == "YouTube") { app = "com.sony.dtv.com.google.android.youtube.tv.com.google.android.apps.youtube.tv.activity.ShellActivity"}
     if (appname == "TV") { app = "com.sony.dtv.com.sony.dtv.tvx.com.sony.dtv.tvx.MainActivity"}
     if (appname == "Program Guide") { app = "com.sony.dtv.com.sony.dtv.tvxlauncher.programguide.com.sony.dtv.tvxlauncher.programguide.MainActivity"}
@@ -633,7 +650,17 @@ def keyPress(key) {
 		//return
 	//}
     if (logEnable) log.debug "Executing '${key}'"
-convertkey(key)
+    convertkey(key)
+}
+
+def channelDown() {
+    if (logEnable) log.debug "Executing 'channelDown'"
+    convertkey("ChannelDown")
+}
+
+def channelUp() {
+    if (logEnable) log.debug "Executing 'channelDown'"
+    convertkey("ChannelUp")
 }
 
 
